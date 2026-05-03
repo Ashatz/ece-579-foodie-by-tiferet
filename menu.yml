@@ -1,0 +1,45 @@
+items:
+  "1-gallon water bottle":
+    name: "1-gallon water bottle"
+    size: "large"
+    is_frozen: false
+    is_fragile: false
+    quantity: 2
+  "pint ice cream":
+    name: "pint ice cream"
+    size: "medium"
+    is_frozen: true
+    is_fragile: false
+    quantity: 1
+  "granola box":
+    name: "granola box"
+    size: "medium"
+    is_frozen: false
+    is_fragile: true
+    quantity: 1
+  "loaf of bread":
+    name: "loaf of bread"
+    size: "medium"
+    is_frozen: false
+    is_fragile: false
+    quantity: 1
+
+beverages:
+  "Carrot Juice":
+    name: "Carrot Juice"
+    beverage_type: "juice"
+    brand: "FreshRoots"
+    is_health_friendly: true
+    avoids_allergens: "citrus"
+  "Corona Beer":
+    name: "Corona Beer"
+    beverage_type: "beer"
+    brand: "Corona"
+    is_health_friendly: false
+    avoids_allergens: ""
+  "Sparkling Water":
+    name: "Sparkling Water"
+    beverage_type: "water"
+    brand: "San Pellegrino"
+    is_health_friendly: true
+    avoids_allergens: "citrus, gluten"
