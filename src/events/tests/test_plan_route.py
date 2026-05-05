@@ -13,7 +13,7 @@ from tiferet.events import DomainEvent
 
 # ** app
 from ...domain import Location, Order, Robot
-from ...interfaces import OrderService, RobotService, RoutePlannerService
+from ...interfaces import LocationService, OrderService, RobotService, RoutePlannerService
 from ..plan_route import PlanRoute
 
 # *** fixtures
@@ -125,6 +125,26 @@ def mock_order_service(sample_order: Order) -> OrderService:
     return svc
 
 
+# ** fixture: mock_location_service
+@pytest.fixture
+def mock_location_service(sample_locations: list, sample_edges: dict) -> LocationService:
+    '''
+    Mock LocationService returning sample locations and edges.
+
+    :param sample_locations: List of locations.
+    :type sample_locations: list
+    :param sample_edges: Adjacency list.
+    :type sample_edges: dict
+    :return: Mocked service.
+    :rtype: LocationService
+    '''
+
+    svc = mock.Mock(spec=LocationService)
+    svc.list.return_value = sample_locations
+    svc.get_edges.return_value = sample_edges
+    return svc
+
+
 # ** fixture: mock_route_planner
 @pytest.fixture
 def mock_route_planner() -> RoutePlannerService:
@@ -144,9 +164,8 @@ def mock_route_planner() -> RoutePlannerService:
 def test_plan_route_success(
     mock_robot_service: RobotService,
     mock_order_service: OrderService,
+    mock_location_service: LocationService,
     mock_route_planner: RoutePlannerService,
-    sample_locations: list,
-    sample_edges: dict,
 ) -> None:
     '''
     Test successful route planning with a valid path.
@@ -155,12 +174,10 @@ def test_plan_route_success(
     :type mock_robot_service: RobotService
     :param mock_order_service: Mocked order service.
     :type mock_order_service: OrderService
+    :param mock_location_service: Mocked location service.
+    :type mock_location_service: LocationService
     :param mock_route_planner: Mocked route planner.
     :type mock_route_planner: RoutePlannerService
-    :param sample_locations: List of locations.
-    :type sample_locations: list
-    :param sample_edges: Adjacency list.
-    :type sample_edges: dict
     '''
 
     # Arrange: planner returns a valid path, no replan needed.
@@ -173,10 +190,9 @@ def test_plan_route_success(
         dependencies={
             'robot_service': mock_robot_service,
             'order_service': mock_order_service,
+            'location_service': mock_location_service,
             'route_planner': mock_route_planner,
         },
-        locations=sample_locations,
-        edges=sample_edges,
     )
 
     # Assert.
@@ -193,9 +209,8 @@ def test_plan_route_success(
 def test_plan_route_no_path(
     mock_robot_service: RobotService,
     mock_order_service: OrderService,
+    mock_location_service: LocationService,
     mock_route_planner: RoutePlannerService,
-    sample_locations: list,
-    sample_edges: dict,
 ) -> None:
     '''
     Test route planning when no path exists.
@@ -204,12 +219,10 @@ def test_plan_route_no_path(
     :type mock_robot_service: RobotService
     :param mock_order_service: Mocked order service.
     :type mock_order_service: OrderService
+    :param mock_location_service: Mocked location service.
+    :type mock_location_service: LocationService
     :param mock_route_planner: Mocked route planner.
     :type mock_route_planner: RoutePlannerService
-    :param sample_locations: List of locations.
-    :type sample_locations: list
-    :param sample_edges: Adjacency list.
-    :type sample_edges: dict
     '''
 
     # Arrange: planner returns no path.
@@ -221,10 +234,9 @@ def test_plan_route_no_path(
         dependencies={
             'robot_service': mock_robot_service,
             'order_service': mock_order_service,
+            'location_service': mock_location_service,
             'route_planner': mock_route_planner,
         },
-        locations=sample_locations,
-        edges=sample_edges,
     )
 
     # Assert.
@@ -239,9 +251,8 @@ def test_plan_route_no_path(
 def test_plan_route_replan(
     mock_robot_service: RobotService,
     mock_order_service: OrderService,
+    mock_location_service: LocationService,
     mock_route_planner: RoutePlannerService,
-    sample_locations: list,
-    sample_edges: dict,
 ) -> None:
     '''
     Test route planning with obstacle detection and replanning.
@@ -250,12 +261,10 @@ def test_plan_route_replan(
     :type mock_robot_service: RobotService
     :param mock_order_service: Mocked order service.
     :type mock_order_service: OrderService
+    :param mock_location_service: Mocked location service.
+    :type mock_location_service: LocationService
     :param mock_route_planner: Mocked route planner.
     :type mock_route_planner: RoutePlannerService
-    :param sample_locations: List of locations.
-    :type sample_locations: list
-    :param sample_edges: Adjacency list.
-    :type sample_edges: dict
     '''
 
     # Arrange: initial path found, then replan returns a new path.
@@ -270,10 +279,9 @@ def test_plan_route_replan(
         dependencies={
             'robot_service': mock_robot_service,
             'order_service': mock_order_service,
+            'location_service': mock_location_service,
             'route_planner': mock_route_planner,
         },
-        locations=sample_locations,
-        edges=sample_edges,
     )
 
     # Assert: the replanned path and distance are used.
