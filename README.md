@@ -272,6 +272,12 @@ Guide documents for each layer of the FOODIE codebase are available in `docs/gui
 - [Robot](docs/guides/domain/robot.md) — Delivery robot (battery, compartments, status)
 - [Beverage](docs/guides/domain/beverage.md) — Beverage recommendation (backward chaining)
 
+### Utility Guides
+
+- [AStarRoutePlanner](docs/guides/utils/route_planner.md) — A* search algorithm, Manhattan heuristic, obstacle replanning (Goal A)
+- [ForwardChainBagger](docs/guides/utils/bagger.md) — Forward-chaining production system, rule priority, bagging logic (Goal B)
+- [BackwardChainSelector](docs/guides/utils/backward_chain_selector.md) — Backward-chaining inference engine, 15-rule knowledge base (Goal C)
+
 ## 11. Submission Files
 
 1. **Project Report** – includes architecture, algorithms, rule bases, STRIPS rules, and sample runs

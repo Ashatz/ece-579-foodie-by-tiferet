@@ -104,6 +104,12 @@ Guide documents are in `docs/guides/`:
 - `robot.md` — Robot domain model (battery, compartments, energy simulation).
 - `beverage.md` — Beverage domain model (type, brand, health/allergy matching for backward chaining).
 
+### Utility Guides (`docs/guides/utils/`)
+
+- `route_planner.md` — AStarRoutePlanner (A* search, Manhattan heuristic, obstacle replanning; Goal A).
+- `bagger.md` — ForwardChainBagger (forward-chaining production system, rule priority; Goal B).
+- `backward_chain_selector.md` — BackwardChainSelector (backward-chaining inference, 15-rule knowledge base; Goal C).
+
 ## Testing
 
 - **Framework:** pytest
