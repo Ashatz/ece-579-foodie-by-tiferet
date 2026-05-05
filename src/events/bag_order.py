@@ -19,8 +19,10 @@ from typing import List
 from tiferet.events import DomainEvent
 
 # ** app
-from ..domain import Bag, Item
+from ..domain import Item
+from ..mappers.bag import BagAggregate
 from ..interfaces import OrderService
+from ..interfaces.bagging import BaggingService
 
 # *** events
 
@@ -29,26 +31,33 @@ class BagOrder(DomainEvent):
     '''
     Forward-chaining event for FOODIE_BAGGER (Goal B).
 
-    Produces the exact rule-firing trace required by the project specification.
+    Loads the order, expands items by quantity, and delegates
+    the forward-chaining production system to an injected BaggingService.
     '''
 
     # * attribute: order_service
     order_service: OrderService
 
+    # * attribute: bagging_service
+    bagging_service: BaggingService
+
     # * init
-    def __init__(self, order_service: OrderService):
+    def __init__(self, order_service: OrderService, bagging_service: BaggingService):
         '''
         Initialize the BagOrder event.
 
         :param order_service: The order service for loading and saving orders.
         :type order_service: OrderService
+        :param bagging_service: The bagging service for forward-chaining bag assignment.
+        :type bagging_service: BaggingService
         '''
 
         self.order_service = order_service
+        self.bagging_service = bagging_service
 
     # * method: execute
     @DomainEvent.parameters_required(['order_id'])
-    def execute(self, order_id: str, **kwargs) -> List[Bag]:
+    def execute(self, order_id: str, **kwargs) -> List[BagAggregate]:
         '''
         Execute the bagging rules on the given order.
 
@@ -56,8 +65,8 @@ class BagOrder(DomainEvent):
         :type order_id: str
         :param kwargs: Additional keyword arguments.
         :type kwargs: dict
-        :return: List of completed Bag objects.
-        :rtype: list[Bag]
+        :return: List of completed BagAggregate objects.
+        :rtype: list[BagAggregate]
         '''
 
         # Load the order from the service.
@@ -74,16 +83,6 @@ class BagOrder(DomainEvent):
         print(f'Order: {order.format_for_bagger()}')
         print()
 
-        bags: List[Bag] = []
-        current_bag = None
-        rule_counter = 1
-
-        def rule_id():
-            nonlocal rule_counter
-            rid = f'R{rule_counter}'
-            rule_counter += 1
-            return rid
-
         # Expand items by quantity so each physical item is bagged individually.
         expanded_items: List[Item] = []
         for item in order.items:
@@ -96,49 +95,8 @@ class BagOrder(DomainEvent):
                     quantity=1,
                 ))
 
-        # Sort items by size priority (large -> medium -> small).
-        size_priority = {'large': 0, 'medium': 1, 'small': 2}
-        sorted_items = sorted(expanded_items, key=lambda i: size_priority[i.size])
-
-        # Phase tracking for trace output.
-        current_phase = None
-
-        for item in sorted_items:
-
-            # Phase announcement.
-            if item.size != current_phase:
-                current_phase = item.size
-                print(f'Rule {rule_id()} says:   Bag {current_phase} items.')
-
-            # Rule: Frozen items always go in a freezer bag.
-            if item.is_frozen:
-                current_bag = Bag(bag_id=f'freezer_bag_{len(bags)+1}', bag_type='freezer')
-                bags.append(current_bag)
-                print(f'Rule {rule_id()} says:   Put {item.name} in a freezer bag.')
-                current_bag.add_item(item)
-                continue
-
-            # Rule: Fragile items start a new bag (prevent crushing).
-            if item.is_fragile:
-                print(f'Rule {rule_id()} says:   Start a new bag (fragile item).')
-                current_bag = Bag(bag_id=f'bag_{len(bags)+1}', bag_type='paper')
-                bags.append(current_bag)
-                current_bag.add_item(item)
-                print(f'Rule {rule_id()} says:   Put {item.name} in {current_bag.bag_id}.')
-                # After fragile item, force a new bag for the next item.
-                current_bag = None
-                continue
-
-            # Rule: Need a new bag if none exists or current is full.
-            if current_bag is None or not current_bag.can_accept_item(item):
-                if current_bag is not None:
-                    print(f'Rule {rule_id()} says:   Start a new bag.')
-                current_bag = Bag(bag_id=f'bag_{len(bags)+1}', bag_type='paper')
-                bags.append(current_bag)
-
-            # Add item to current bag.
-            current_bag.add_item(item)
-            print(f'Rule {rule_id()} says:   Put {item.name} in {current_bag.bag_id}.')
+        # Delegate forward-chaining bagging to the bagging service.
+        bags = self.bagging_service.bag_items(expanded_items)
 
         # Update order status to bagged and persist.
         order.status = 'bagged'

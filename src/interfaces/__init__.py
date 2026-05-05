@@ -7,6 +7,7 @@ Abstract service contracts for domain-specific data access.
 # *** imports
 
 # ** app
+from .bagging import BaggingService
 from .beverage import BeverageService
 from .item import ItemService
 from .location import LocationService
@@ -17,6 +18,7 @@ from .route_planner import RoutePlannerService
 # *** exports
 
 __all__ = [
+    'BaggingService',
     'BeverageService',
     'ItemService',
     'LocationService',
