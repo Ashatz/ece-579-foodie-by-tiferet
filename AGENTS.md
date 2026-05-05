@@ -91,6 +91,19 @@ Single `config.yml` at project root with sections:
 - `campus.yml` — Campus terrain graph (locations + edges).
 - `foodie.db` — SQLite database for runtime order/robot state (auto-created).
 
+## Documentation
+
+Guide documents are in `docs/guides/`:
+
+### Domain Model Guides (`docs/guides/domain/`)
+
+- `item.md` — Item domain model (size, frozen, fragile, quantity; used by FOODIE_BAGGER).
+- `bag.md` — Bag domain model (paper/freezer, capacity rules, crush prevention).
+- `order.md` — Order domain model (items, destination, lifecycle statuses).
+- `location.md` — Location domain model (campus graph node, A* heuristic, obstacle flag).
+- `robot.md` — Robot domain model (battery, compartments, energy simulation).
+- `beverage.md` — Beverage domain model (type, brand, health/allergy matching for backward chaining).
+
 ## Testing
 
 - **Framework:** pytest

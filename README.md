@@ -259,7 +259,20 @@ The `locations` section defines graph nodes with coordinates for the Manhattan d
 ### Modifying guest scenarios
 Edit the `facts` dictionaries in the Goal C section of `foodie.py`. Available fact keys include: `health_nut`, `allergies_citrus`, `guest_age` (adult/minor), `occasion` (casual/celebration/new_years_eve), `setting` (outdoor), `formality` (formal), `entree` (steak/chicken), `guest_liked`.
 
-## 10. Submission Files
+## 10. Documentation
+
+Guide documents for each layer of the FOODIE codebase are available in `docs/guides/`.
+
+### Domain Model Guides
+
+- [Item](docs/guides/domain/item.md) — Food item (size, frozen, fragile, quantity)
+- [Bag](docs/guides/domain/bag.md) — Paper/freezer bag with capacity and crush rules
+- [Order](docs/guides/domain/order.md) — Customer order (items, destination, lifecycle status)
+- [Location](docs/guides/domain/location.md) — Campus graph node (coordinates, A* heuristic)
+- [Robot](docs/guides/domain/robot.md) — Delivery robot (battery, compartments, status)
+- [Beverage](docs/guides/domain/beverage.md) — Beverage recommendation (backward chaining)
+
+## 11. Submission Files
 
 1. **Project Report** – includes architecture, algorithms, rule bases, STRIPS rules, and sample runs
 2. **Code** – this repository
