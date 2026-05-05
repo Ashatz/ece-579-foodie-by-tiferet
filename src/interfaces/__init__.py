@@ -9,6 +9,7 @@ Abstract service contracts for domain-specific data access.
 # ** app
 from .bagging import BaggingService
 from .beverage import BeverageService
+from .beverage_select import BeverageSelectService
 from .item import ItemService
 from .location import LocationService
 from .order import OrderService
@@ -19,6 +20,7 @@ from .route_planner import RoutePlannerService
 
 __all__ = [
     'BaggingService',
+    'BeverageSelectService',
     'BeverageService',
     'ItemService',
     'LocationService',

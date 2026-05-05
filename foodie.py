@@ -28,7 +28,7 @@ from src.repos import (
     RobotSqliteRepository,
 )
 from src.events import BagOrder, PlanRoute, SelectBeverage
-from src.utils import AStarRoutePlanner
+from src.utils import AStarRoutePlanner, BackwardChainSelector, ForwardChainBagger
 
 
 # *** constants
@@ -97,7 +97,10 @@ if __name__ == '__main__':
 
     bags = DomainEvent.handle(
         BagOrder,
-        dependencies={'order_service': order_repo},
+        dependencies={
+            'order_service': order_repo,
+            'bagging_service': ForwardChainBagger(),
+        },
         order_id='ORD-101',
     )
 
@@ -134,7 +137,10 @@ if __name__ == '__main__':
     print()
     result_1 = DomainEvent.handle(
         SelectBeverage,
-        dependencies={'beverage_service': beverage_repo},
+        dependencies={
+            'beverage_service': beverage_repo,
+            'beverage_select_service': BackwardChainSelector(),
+        },
         facts={'health_nut': True, 'allergies_citrus': True, 'guest_age': 'adult'},
     )
 
@@ -143,7 +149,10 @@ if __name__ == '__main__':
     print()
     result_2 = DomainEvent.handle(
         SelectBeverage,
-        dependencies={'beverage_service': beverage_repo},
+        dependencies={
+            'beverage_service': beverage_repo,
+            'beverage_select_service': BackwardChainSelector(),
+        },
         facts={'occasion': 'casual', 'guest_age': 'adult', 'setting': 'outdoor'},
     )
 
