@@ -7,7 +7,11 @@ Represents a single food item in an order (used by FOODIE_BAGGER and route plann
 # *** imports
 
 # ** core
-from tiferet import DomainObject, StringType, BooleanType, IntType
+from typing import Literal
+
+# ** infra
+from pydantic import Field
+from tiferet import DomainObject
 
 # *** models
 
@@ -20,50 +24,22 @@ class Item(DomainObject):
     '''
 
     # * attribute: name
-    name = StringType(required=True, metadata={'description': 'Item name or description'})
+    name: str = Field(..., description='Item name or description')
 
     # * attribute: size
-    size = StringType(
-        required=True,
-        choices=['large', 'medium', 'small'],
-        metadata={'description': 'Size category for bagging priority'}
+    size: Literal['large', 'medium', 'small'] = Field(
+        ...,
+        description='Size category for bagging priority',
     )
 
     # * attribute: is_frozen
-    is_frozen = BooleanType(default=False)
+    is_frozen: bool = Field(default=False, description='Whether the item requires a freezer bag')
 
     # * attribute: is_fragile
-    is_fragile = BooleanType(default=False)
+    is_fragile: bool = Field(default=False, description='Whether the item must not be crushed')
 
     # * attribute: quantity
-    quantity = IntType(default=1, min_value=1)
-
-    # * method: new (static)
-    @staticmethod
-    def new(name: str, size: str, is_frozen: bool = False, is_fragile: bool = False, quantity: int = 1, **kwargs):
-        '''
-        Factory for creating a new Item (Tiferet DomainObject pattern).
-
-        :param name: Item name.
-        :type name: str
-        :param size: Size category (large/medium/small).
-        :type size: str
-        :param is_frozen: Whether the item requires a freezer bag.
-        :type is_frozen: bool
-        :param is_fragile: Whether the item must not be crushed.
-        :type is_fragile: bool
-        :param quantity: Number of identical items.
-        :type quantity: int
-        '''
-        return DomainObject.new(
-            model_type=Item,
-            name=name,
-            size=size,
-            is_frozen=is_frozen,
-            is_fragile=is_fragile,
-            quantity=quantity,
-            **kwargs
-        )
+    quantity: int = Field(default=1, ge=1, description='Number of identical items')
 
     # * method: format_for_bagger
     def format_for_bagger(self) -> str:
@@ -73,10 +49,14 @@ class Item(DomainObject):
         :return: Formatted description for rule-firing trace.
         :rtype: str
         '''
+
+        # Build optional flag annotations.
         flags = []
         if self.is_frozen:
-            flags.append("frozen")
+            flags.append('frozen')
         if self.is_fragile:
-            flags.append("fragile")
-        flag_str = f" ({', '.join(flags)})" if flags else ""
-        return f"{self.quantity}x {self.name}{flag_str} [{self.size}]"
+            flags.append('fragile')
+        flag_str = f" ({', '.join(flags)})" if flags else ''
+
+        # Return the formatted string.
+        return f'{self.quantity}x {self.name}{flag_str} [{self.size}]'

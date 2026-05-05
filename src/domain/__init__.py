@@ -4,7 +4,7 @@ FOODIE Domain Models Subpackage
 Core domain objects for the Food Intelligence Electrified expert system
 (ECE 479/579 Spring 2026 Final Project/Exam).
 
-Extends Tiferet DomainObject for runtime behavior and mapper compatibility.
+Extends Tiferet DomainObject (Pydantic v2) for runtime behavior.
 """
 
 # *** imports

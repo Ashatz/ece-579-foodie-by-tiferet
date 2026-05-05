@@ -7,18 +7,18 @@ ECE 479/579 Spring 2026 Final Project/Exam
 
 # *** imports
 
-# ** core
-from tiferet.builders import CLI
-
 # ** app
-from .builders import FoodieBuilder
+from .domain import Item, Order, Bag, Location, Robot, Beverage
 
 # *** exports
 
-__version__ = "0.1.0-dev"
+__version__ = '0.2.0-dev'
 
-# Public API (Tiferet style)
 __all__ = [
-    'CLI',
-    'FoodieBuilder',
+    'Item',
+    'Order',
+    'Bag',
+    'Location',
+    'Robot',
+    'Beverage',
 ]
