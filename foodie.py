@@ -16,13 +16,19 @@ import os
 
 # ** infra
 from tiferet.events import DomainEvent
-from tiferet.utils import Yaml
 
 # ** app
 from src.domain import Item, Order, Bag, Location, Robot, Beverage
 from src.mappers import OrderAggregate, RobotAggregate
-from src.repos import LocationYamlRepository, OrderSqliteRepository, RobotSqliteRepository
+from src.repos import (
+    BeverageYamlRepository,
+    ItemYamlRepository,
+    LocationYamlRepository,
+    OrderSqliteRepository,
+    RobotSqliteRepository,
+)
 from src.events import BagOrder, PlanRoute, SelectBeverage
+from src.utils import AStarRoutePlanner
 
 
 # *** constants
@@ -32,22 +38,10 @@ DB_PATH = 'foodie.db'
 
 # *** helpers
 
-def load_menu(path: str = 'menu.yml') -> dict:
-    '''Load item and beverage data from the YAML menu file.'''
-    return Yaml(path).load()
+def seed_orders(order_repo: OrderSqliteRepository, item_repo: ItemYamlRepository) -> None:
+    '''Seed the sample order into SQLite using the item repository.'''
 
-
-def seed_orders(order_repo: OrderSqliteRepository, menu_data: dict) -> None:
-    '''Seed the sample order into SQLite from menu.yml data.'''
-    items = []
-    for name, data in menu_data.get('items', {}).items():
-        items.append(Item(
-            name=data['name'],
-            size=data['size'],
-            is_frozen=data.get('is_frozen', False),
-            is_fragile=data.get('is_fragile', False),
-            quantity=data.get('quantity', 1),
-        ))
+    items = item_repo.list()
 
     orders = [
         OrderAggregate(order_id='ORD-101', items=items, destination='Building_A'),
@@ -69,20 +63,6 @@ def seed_robots(robot_repo: RobotSqliteRepository, fw: Location) -> None:
         robot_repo.save(robot)
 
 
-def build_beverage_candidates(menu_data: dict) -> list:
-    '''Build beverage candidates from menu.yml data.'''
-    candidates = []
-    for name, data in menu_data.get('beverages', {}).items():
-        candidates.append(Beverage(
-            name=data['name'],
-            beverage_type=data['beverage_type'],
-            brand=data['brand'],
-            is_health_friendly=data.get('is_health_friendly', False),
-            avoids_allergens=data.get('avoids_allergens', ''),
-        ))
-    return candidates
-
-
 # *** main
 
 if __name__ == '__main__':
@@ -92,18 +72,19 @@ if __name__ == '__main__':
         os.remove(DB_PATH)
 
     # Initialize repositories.
+    item_repo = ItemYamlRepository(menu_yaml_file='menu.yml')
+    beverage_repo = BeverageYamlRepository(menu_yaml_file='menu.yml')
     location_repo = LocationYamlRepository(campus_yaml_file='campus.yml')
     order_repo = OrderSqliteRepository(db_path=DB_PATH)
     robot_repo = RobotSqliteRepository(db_path=DB_PATH)
 
-    # Load menu and campus graph from YAML.
-    menu_data = load_menu()
+    # Load campus graph from YAML.
     locations = location_repo.list()
     edges = location_repo.get_edges()
     fw = location_repo.get('FW')
 
     # Seed data into SQLite.
-    seed_orders(order_repo, menu_data)
+    seed_orders(order_repo, item_repo)
     seed_robots(robot_repo, fw)
 
     # =========================================================================
@@ -131,7 +112,11 @@ if __name__ == '__main__':
 
     route_result = DomainEvent.handle(
         PlanRoute,
-        dependencies={'robot_service': robot_repo, 'order_service': order_repo},
+        dependencies={
+            'robot_service': robot_repo,
+            'order_service': order_repo,
+            'route_planner': AStarRoutePlanner(),
+        },
         locations=locations,
         edges=edges,
     )
@@ -145,13 +130,11 @@ if __name__ == '__main__':
     print('=' * 70)
     print()
 
-    beverage_candidates = build_beverage_candidates(menu_data)
-
     print('--- Scenario 1: Health nut with citrus allergy ---')
     print()
     result_1 = DomainEvent.handle(
         SelectBeverage,
-        candidates=beverage_candidates,
+        dependencies={'beverage_service': beverage_repo},
         facts={'health_nut': True, 'allergies_citrus': True, 'guest_age': 'adult'},
     )
 
@@ -160,7 +143,7 @@ if __name__ == '__main__':
     print()
     result_2 = DomainEvent.handle(
         SelectBeverage,
-        candidates=beverage_candidates,
+        dependencies={'beverage_service': beverage_repo},
         facts={'occasion': 'casual', 'guest_age': 'adult', 'setting': 'outdoor'},
     )
 

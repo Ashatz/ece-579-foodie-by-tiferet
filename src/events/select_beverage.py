@@ -19,6 +19,7 @@ from tiferet.events import DomainEvent
 
 # ** app
 from ..domain import Beverage
+from ..interfaces import BeverageService
 
 # *** events
 
@@ -31,20 +32,32 @@ class SelectBeverage(DomainEvent):
     that selects the right beverage for unexpected guests.
     '''
 
+    # * attribute: beverage_service
+    beverage_service: BeverageService
+
+    # * init
+    def __init__(self, beverage_service: BeverageService):
+        '''
+        Initialize the SelectBeverage event.
+
+        :param beverage_service: The beverage service for loading beverage candidates.
+        :type beverage_service: BeverageService
+        '''
+
+        self.beverage_service = beverage_service
+
     # * method: execute
     def execute(self, **kwargs) -> Beverage:
         '''
         Select the best beverage using backward chaining on guest facts.
 
-        :param candidates: List of available Beverage objects.
-        :type candidates: list[Beverage]
         :param facts: Dict of known guest facts (e.g., health_nut, allergies, occasion, etc.).
         :type facts: dict
         :return: The selected beverage.
         :rtype: Beverage
         '''
 
-        candidates: List[Beverage] = kwargs['candidates']
+        candidates: List[Beverage] = self.beverage_service.list()
         facts: Dict[str, Any] = kwargs.get('facts', {})
 
         print('FOODIE_SPA backward-chaining inference started...')
