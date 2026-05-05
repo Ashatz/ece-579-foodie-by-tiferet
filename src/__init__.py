@@ -9,10 +9,11 @@ ECE 479/579 Spring 2026 Final Project/Exam
 
 # ** app
 from .domain import Item, Order, Bag, Location, Robot, Beverage
+from .interfaces import OrderService, RobotService
 
 # *** exports
 
-__version__ = '0.2.0-dev'
+__version__ = '0.1'
 
 __all__ = [
     'Item',
@@ -21,4 +22,6 @@ __all__ = [
     'Location',
     'Robot',
     'Beverage',
+    'OrderService',
+    'RobotService',
 ]

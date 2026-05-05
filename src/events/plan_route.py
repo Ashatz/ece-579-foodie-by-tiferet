@@ -21,6 +21,7 @@ from tiferet.events import DomainEvent
 
 # ** app
 from ..domain import Robot, Order, Location
+from ..interfaces import OrderService, RobotService
 
 # *** events
 
@@ -33,27 +34,47 @@ class PlanRoute(DomainEvent):
     handles obstacle detection with replanning, and produces fleet traces.
     '''
 
+    # * attribute: robot_service
+    robot_service: RobotService
+
+    # * attribute: order_service
+    order_service: OrderService
+
+    # * init
+    def __init__(self, robot_service: RobotService, order_service: OrderService):
+        '''
+        Initialize the PlanRoute event.
+
+        :param robot_service: The robot service for loading and saving robots.
+        :type robot_service: RobotService
+        :param order_service: The order service for loading orders.
+        :type order_service: OrderService
+        '''
+
+        self.robot_service = robot_service
+        self.order_service = order_service
+
     # * method: execute
     def execute(self, **kwargs) -> Dict[str, Any]:
         '''
         Plan routes for the given orders using A* and simulate the fleet.
 
-        :param robots: List of Robot domain objects.
-        :type robots: list[Robot]
-        :param orders: List of Order domain objects.
-        :type orders: list[Order]
         :param locations: List of Location domain objects (campus graph nodes).
         :type locations: list[Location]
         :param edges: Adjacency list as dict of {name: [neighbor_name, ...]}.
         :type edges: dict
         :param obstacles: Set of edge tuples currently blocked.
         :type obstacles: set
+        :param kwargs: Additional keyword arguments.
+        :type kwargs: dict
         :return: Summary of planned routes and simulation results.
         :rtype: dict
         '''
 
-        robots: List[Robot] = kwargs['robots']
-        orders: List[Order] = kwargs['orders']
+        # Load robots and orders from their respective services.
+        robots: List[Robot] = self.robot_service.list()
+        orders: List[Order] = self.order_service.list()
+
         locations: List[Location] = kwargs['locations']
         edges: Dict[str, List[str]] = kwargs['edges']
         obstacles: Set[Tuple[str, str]] = kwargs.get('obstacles', set())
@@ -114,6 +135,7 @@ class PlanRoute(DomainEvent):
             # Simulate robot movement.
             robot.consume_energy(dist)
             robot.status = 'en_route'
+            self.robot_service.save(robot)
             total_distance += dist
 
             results.append({

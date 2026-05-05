@@ -11,13 +11,23 @@ Demonstrates all three project goals:
 
 # *** imports
 
+# ** core
+import os
+
 # ** infra
 from tiferet.events import DomainEvent
 from tiferet.utils import Yaml
 
 # ** app
 from src.domain import Item, Order, Bag, Location, Robot, Beverage
+from src.mappers import OrderAggregate, RobotAggregate
+from src.repos import OrderSqliteRepository, RobotSqliteRepository
 from src.events import BagOrder, PlanRoute, SelectBeverage
+
+
+# *** constants
+
+DB_PATH = 'foodie.db'
 
 
 # *** helpers
@@ -27,8 +37,8 @@ def load_menu(path: str = 'menu.yml') -> dict:
     return Yaml(path).load()
 
 
-def build_sample_order(menu_data: dict) -> Order:
-    '''Build the sample order from the project spec using menu.yml data.'''
+def seed_orders(order_repo: OrderSqliteRepository, menu_data: dict) -> None:
+    '''Seed the sample order into SQLite from menu.yml data.'''
     items = []
     for name, data in menu_data.get('items', {}).items():
         items.append(Item(
@@ -38,7 +48,25 @@ def build_sample_order(menu_data: dict) -> Order:
             is_fragile=data.get('is_fragile', False),
             quantity=data.get('quantity', 1),
         ))
-    return Order(order_id='ORD-101', items=items, destination='Building_A')
+
+    orders = [
+        OrderAggregate(order_id='ORD-101', items=items, destination='Building_A'),
+        OrderAggregate(order_id='ORD-102', items=[], destination='Building_B'),
+        OrderAggregate(order_id='ORD-103', items=[], destination='Dorm_1'),
+    ]
+    for order in orders:
+        order_repo.save(order)
+
+
+def seed_robots(robot_repo: RobotSqliteRepository, fw: Location) -> None:
+    '''Seed the robot fleet into SQLite.'''
+    robots = [
+        RobotAggregate(robot_id='R1', current_location=fw),
+        RobotAggregate(robot_id='R2', current_location=fw),
+        RobotAggregate(robot_id='R3', current_location=fw),
+    ]
+    for robot in robots:
+        robot_repo.save(robot)
 
 
 def build_campus_graph():
@@ -89,7 +117,21 @@ def build_beverage_candidates(menu_data: dict) -> list:
 
 if __name__ == '__main__':
 
+    # Clean up any previous database for a fresh demo run.
+    if os.path.exists(DB_PATH):
+        os.remove(DB_PATH)
+
+    # Initialize repositories.
+    order_repo = OrderSqliteRepository(db_path=DB_PATH)
+    robot_repo = RobotSqliteRepository(db_path=DB_PATH)
+
+    # Load menu and build campus graph.
     menu_data = load_menu()
+    locations, edges, fw = build_campus_graph()
+
+    # Seed data into SQLite.
+    seed_orders(order_repo, menu_data)
+    seed_robots(robot_repo, fw)
 
     # =========================================================================
     # GOAL B: FOODIE_BAGGER — Forward-Chaining Rule-Based Bagging
@@ -99,8 +141,11 @@ if __name__ == '__main__':
     print('=' * 70)
     print()
 
-    sample_order = build_sample_order(menu_data)
-    bags = DomainEvent.handle(BagOrder, order=sample_order)
+    bags = DomainEvent.handle(
+        BagOrder,
+        dependencies={'order_service': order_repo},
+        order_id='ORD-101',
+    )
 
     # =========================================================================
     # GOAL A: Route Optimization — A* Search + Multi-Robot Replanning
@@ -111,21 +156,11 @@ if __name__ == '__main__':
     print('=' * 70)
     print()
 
-    locations, edges, fw = build_campus_graph()
-    robots = [
-        Robot(robot_id='R1', current_location=fw),
-        Robot(robot_id='R2', current_location=fw),
-        Robot(robot_id='R3', current_location=fw),
-    ]
-    orders = [
-        Order(order_id='ORD-101', items=[], destination='Building_A'),
-        Order(order_id='ORD-102', items=[], destination='Building_B'),
-        Order(order_id='ORD-103', items=[], destination='Dorm_1'),
-    ]
     route_result = DomainEvent.handle(
         PlanRoute,
-        robots=robots, orders=orders,
-        locations=locations, edges=edges,
+        dependencies={'robot_service': robot_repo, 'order_service': order_repo},
+        locations=locations,
+        edges=edges,
     )
 
     # =========================================================================

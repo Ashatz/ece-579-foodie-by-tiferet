@@ -19,7 +19,8 @@ from typing import List
 from tiferet.events import DomainEvent
 
 # ** app
-from ..domain import Order, Bag, Item
+from ..domain import Bag, Item
+from ..interfaces import OrderService
 
 # *** events
 
@@ -31,18 +32,43 @@ class BagOrder(DomainEvent):
     Produces the exact rule-firing trace required by the project specification.
     '''
 
+    # * attribute: order_service
+    order_service: OrderService
+
+    # * init
+    def __init__(self, order_service: OrderService):
+        '''
+        Initialize the BagOrder event.
+
+        :param order_service: The order service for loading and saving orders.
+        :type order_service: OrderService
+        '''
+
+        self.order_service = order_service
+
     # * method: execute
-    def execute(self, **kwargs) -> List[Bag]:
+    @DomainEvent.parameters_required(['order_id'])
+    def execute(self, order_id: str, **kwargs) -> List[Bag]:
         '''
         Execute the bagging rules on the given order.
 
-        :param order: The Order domain object to bag.
-        :type order: Order
+        :param order_id: The order identifier to load and bag.
+        :type order_id: str
+        :param kwargs: Additional keyword arguments.
+        :type kwargs: dict
         :return: List of completed Bag objects.
         :rtype: list[Bag]
         '''
 
-        order: Order = kwargs['order']
+        # Load the order from the service.
+        order = self.order_service.get(order_id)
+
+        # Verify the order exists.
+        self.verify(
+            expression=order is not None,
+            error_code='ORDER_NOT_FOUND',
+            order_id=order_id,
+        )
 
         print('FOODIE_BAGGER forward-chaining production system started...')
         print(f'Order: {order.format_for_bagger()}')
@@ -113,6 +139,10 @@ class BagOrder(DomainEvent):
             # Add item to current bag.
             current_bag.add_item(item)
             print(f'Rule {rule_id()} says:   Put {item.name} in {current_bag.bag_id}.')
+
+        # Update order status to bagged and persist.
+        order.status = 'bagged'
+        self.order_service.save(order)
 
         # Summary.
         print()
