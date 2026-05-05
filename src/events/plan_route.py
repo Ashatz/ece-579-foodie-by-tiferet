@@ -18,7 +18,7 @@ from tiferet.events import DomainEvent
 # ** app
 from ..domain import Robot, Order, Location
 from ..mappers.location import LocationAggregate
-from ..interfaces import OrderService, RobotService, RoutePlannerService
+from ..interfaces import LocationService, OrderService, RobotService, RoutePlannerService
 
 # *** events
 
@@ -40,11 +40,15 @@ class PlanRoute(DomainEvent):
     # * attribute: route_planner
     route_planner: RoutePlannerService
 
+    # * attribute: location_service
+    location_service: LocationService
+
     # * init
     def __init__(self,
             robot_service: RobotService,
             order_service: OrderService,
-            route_planner: RoutePlannerService):
+            route_planner: RoutePlannerService,
+            location_service: LocationService):
         '''
         Initialize the PlanRoute event.
 
@@ -54,21 +58,20 @@ class PlanRoute(DomainEvent):
         :type order_service: OrderService
         :param route_planner: The route planner service for A* search and replanning.
         :type route_planner: RoutePlannerService
+        :param location_service: The location service for loading campus graph data.
+        :type location_service: LocationService
         '''
 
         self.robot_service = robot_service
         self.order_service = order_service
         self.route_planner = route_planner
+        self.location_service = location_service
 
     # * method: execute
     def execute(self, **kwargs) -> Dict[str, Any]:
         '''
         Plan routes for the given orders and simulate the fleet.
 
-        :param locations: List of Location domain objects (campus graph nodes).
-        :type locations: list[Location]
-        :param edges: Adjacency list as dict of {name: [neighbor_name, ...]}.
-        :type edges: dict
         :param obstacles: Set of edge tuples currently blocked.
         :type obstacles: set
         :param kwargs: Additional keyword arguments.
@@ -81,8 +84,9 @@ class PlanRoute(DomainEvent):
         robots: List[Robot] = self.robot_service.list()
         orders: List[Order] = self.order_service.list()
 
-        locations: List[Location] = kwargs['locations']
-        edges: Dict[str, List[str]] = kwargs['edges']
+        # Load campus graph from the location service.
+        locations: List[Location] = self.location_service.list()
+        edges: Dict[str, List[str]] = self.location_service.get_edges()
         obstacles: Set[Tuple[str, str]] = kwargs.get('obstacles', set())
 
         # Build lookup using LocationAggregate instances.

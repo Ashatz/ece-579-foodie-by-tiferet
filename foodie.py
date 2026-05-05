@@ -15,20 +15,16 @@ Demonstrates all three project goals:
 import os
 
 # ** infra
-from tiferet.events import DomainEvent
+from tiferet import App
 
 # ** app
-from src.domain import Item, Order, Bag, Location, Robot, Beverage
 from src.mappers import OrderAggregate, RobotAggregate
 from src.repos import (
-    BeverageYamlRepository,
     ItemYamlRepository,
     LocationYamlRepository,
     OrderSqliteRepository,
     RobotSqliteRepository,
 )
-from src.events import BagOrder, PlanRoute, SelectBeverage
-from src.utils import AStarRoutePlanner, BackwardChainSelector, ForwardChainBagger
 
 
 # *** constants
@@ -52,7 +48,7 @@ def seed_orders(order_repo: OrderSqliteRepository, item_repo: ItemYamlRepository
         order_repo.save(order)
 
 
-def seed_robots(robot_repo: RobotSqliteRepository, fw: Location) -> None:
+def seed_robots(robot_repo: RobotSqliteRepository, fw) -> None:
     '''Seed the robot fleet into SQLite.'''
     robots = [
         RobotAggregate(robot_id='R1', current_location=fw),
@@ -71,21 +67,19 @@ if __name__ == '__main__':
     if os.path.exists(DB_PATH):
         os.remove(DB_PATH)
 
-    # Initialize repositories.
+    # Seed demo data using direct repo access.
     item_repo = ItemYamlRepository(menu_yaml_file='menu.yml')
-    beverage_repo = BeverageYamlRepository(menu_yaml_file='menu.yml')
     location_repo = LocationYamlRepository(campus_yaml_file='campus.yml')
     order_repo = OrderSqliteRepository(db_path=DB_PATH)
     robot_repo = RobotSqliteRepository(db_path=DB_PATH)
 
-    # Load campus graph from YAML.
-    locations = location_repo.list()
-    edges = location_repo.get_edges()
     fw = location_repo.get('FW')
-
-    # Seed data into SQLite.
     seed_orders(order_repo, item_repo)
     seed_robots(robot_repo, fw)
+
+    # Initialize the Tiferet application.
+    app = App()
+    app.load_app_service(app_yaml_file='config.yml')
 
     # =========================================================================
     # GOAL B: FOODIE_BAGGER — Forward-Chaining Rule-Based Bagging
@@ -95,14 +89,7 @@ if __name__ == '__main__':
     print('=' * 70)
     print()
 
-    bags = DomainEvent.handle(
-        BagOrder,
-        dependencies={
-            'order_service': order_repo,
-            'bagging_service': ForwardChainBagger(),
-        },
-        order_id='ORD-101',
-    )
+    app.run('foodie', 'admin.bag_order', data=dict(order_id='ORD-101'))
 
     # =========================================================================
     # GOAL A: Route Optimization — A* Search + Multi-Robot Replanning
@@ -113,16 +100,7 @@ if __name__ == '__main__':
     print('=' * 70)
     print()
 
-    route_result = DomainEvent.handle(
-        PlanRoute,
-        dependencies={
-            'robot_service': robot_repo,
-            'order_service': order_repo,
-            'route_planner': AStarRoutePlanner(),
-        },
-        locations=locations,
-        edges=edges,
-    )
+    app.run('foodie', 'admin.plan_route')
 
     # =========================================================================
     # GOAL C: FOODIE_SPA — Backward-Chaining Beverage Selection
@@ -135,26 +113,16 @@ if __name__ == '__main__':
 
     print('--- Scenario 1: Health nut with citrus allergy ---')
     print()
-    result_1 = DomainEvent.handle(
-        SelectBeverage,
-        dependencies={
-            'beverage_service': beverage_repo,
-            'beverage_select_service': BackwardChainSelector(),
-        },
+    app.run('foodie', 'admin.select_beverage', data=dict(
         facts={'health_nut': True, 'allergies_citrus': True, 'guest_age': 'adult'},
-    )
+    ))
 
     print()
     print('--- Scenario 2: Casual gathering, adult guest ---')
     print()
-    result_2 = DomainEvent.handle(
-        SelectBeverage,
-        dependencies={
-            'beverage_service': beverage_repo,
-            'beverage_select_service': BackwardChainSelector(),
-        },
+    app.run('foodie', 'admin.select_beverage', data=dict(
         facts={'occasion': 'casual', 'guest_age': 'adult', 'setting': 'outdoor'},
-    )
+    ))
 
     print()
     print('=' * 70)

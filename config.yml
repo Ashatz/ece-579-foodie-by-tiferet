@@ -1,0 +1,108 @@
+interfaces:
+  foodie:
+    name: FOODIE
+    description: Food Intelligence Electrified by Tiferet
+  foodie_cli:
+    name: FOODIE CLI
+    description: FOODIE command-line interface
+
+services:
+  bag_order_evt:
+    module_path: src.events.bag_order
+    class_name: BagOrder
+  plan_route_evt:
+    module_path: src.events.plan_route
+    class_name: PlanRoute
+  select_beverage_evt:
+    module_path: src.events.select_beverage
+    class_name: SelectBeverage
+  order_service:
+    module_path: src.repos.order
+    class_name: OrderSqliteRepository
+    params:
+      db_path: foodie.db
+  robot_service:
+    module_path: src.repos.robot
+    class_name: RobotSqliteRepository
+    params:
+      db_path: foodie.db
+  item_service:
+    module_path: src.repos.item
+    class_name: ItemYamlRepository
+    params:
+      menu_yaml_file: menu.yml
+  beverage_service:
+    module_path: src.repos.beverage
+    class_name: BeverageYamlRepository
+    params:
+      menu_yaml_file: menu.yml
+  location_service:
+    module_path: src.repos.location
+    class_name: LocationYamlRepository
+    params:
+      campus_yaml_file: campus.yml
+  bagging_service:
+    module_path: src.utils.bagger
+    class_name: ForwardChainBagger
+  route_planner:
+    module_path: src.utils.route_planner
+    class_name: AStarRoutePlanner
+  beverage_select_service:
+    module_path: src.utils.backward_chain_selector
+    class_name: BackwardChainSelector
+
+features:
+  admin:
+    bag_order:
+      name: Bag Order
+      description: Bag an order using forward-chaining rules
+      steps:
+        - service_id: bag_order_evt
+          name: Execute bag order
+    plan_route:
+      name: Plan Route
+      description: Plan delivery routes using A* search with multi-robot replanning
+      steps:
+        - service_id: plan_route_evt
+          name: Execute route planning
+    select_beverage:
+      name: Select Beverage
+      description: Select a beverage using backward-chaining inference
+      steps:
+        - service_id: select_beverage_evt
+          name: Execute beverage selection
+
+cli:
+  cmds:
+    admin:
+      bag-order:
+        name: Bag Order Command
+        key: bag-order
+        group_key: admin
+        description: Bag an order using forward-chaining rules.
+        args:
+          - name_or_flags:
+              - order_id
+            description: The order ID to bag.
+      plan-route:
+        name: Plan Route Command
+        key: plan-route
+        group_key: admin
+        description: Plan delivery routes using A* search.
+      select-beverage:
+        name: Select Beverage Command
+        key: select-beverage
+        group_key: admin
+        description: Select a beverage using backward-chaining inference.
+        args:
+          - name_or_flags:
+              - facts
+            description: 'Fact key=value pairs (e.g. health_nut=True guest_age=adult).'
+            nargs: '*'
+
+errors:
+  ORDER_NOT_FOUND:
+    name: Order Not Found
+    message:
+      - lang: en_US
+        text: 'Order not found: {order_id}'

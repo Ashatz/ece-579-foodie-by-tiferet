@@ -50,10 +50,24 @@ A single command runs all three goals with sample data:
 python foodie.py
 ```
 
-The script loads item and beverage data from `menu.yml`, campus terrain from `campus.yml`, then executes:
-1. **Goal B** – bags the sample order (2× water bottles, ice cream, granola box, bread)
-2. **Goal A** – plans routes for 3 orders across a 10-node campus graph with 3 robots
-3. **Goal C** – selects beverages for two guest scenarios via backward chaining
+The script seeds demo data, then uses the Tiferet `AppBuilder` to execute each goal as a configured feature (`admin.bag_order`, `admin.plan_route`, `admin.select_beverage`).
+
+### CLI Interface
+
+FOODIE also provides a command-line interface via `foodie_cli.py`:
+
+```bash
+# Bag an order
+python foodie_cli.py admin bag-order ORD-101
+
+# Plan delivery routes
+python foodie_cli.py admin plan-route
+
+# Select a beverage (pass facts as key=value pairs)
+python foodie_cli.py admin select-beverage health_nut=True allergies_citrus=True guest_age=adult
+```
+
+The CLI uses Tiferet's `CliBuilder` to parse arguments via `argparse` and dispatch to the same features defined in `config.yml`.
 
 ## 6. Expected Output
 
@@ -113,11 +127,14 @@ Backward chaining successful -> beverage selected.
 ## 7. Project Structure
 
 ```
-foodie.py                  # Main demo script (runs all 3 goals)
+foodie.py                  # Main demo script (runs all 3 goals via AppBuilder)
+foodie_cli.py              # CLI entry point (CliBuilder + argparse)
+config.yml                 # Unified Tiferet v2 configuration
 menu.yml                   # Item & beverage data (YAML)
 campus.yml                 # Campus terrain: locations + edge graph (YAML)
 locations.yml              # Standalone location definitions (YAML)
 README.md                  # This file
+AGENTS.md                  # AI agent reference
 src/
 ├── __init__.py            # Package exports
 ├── domain/                # Pydantic domain models (Tiferet DomainObject)
@@ -128,21 +145,32 @@ src/
 │   ├── robot.py           # Delivery robot (battery, compartments, status)
 │   └── beverage.py        # Beverage (type, brand, health/allergy attributes)
 ├── interfaces/            # Service interfaces (Tiferet Service ABC)
+│   ├── bagging.py         # BaggingService
+│   ├── beverage.py        # BeverageService
+│   ├── beverage_select.py # BeverageSelectService
+│   ├── item.py            # ItemService
 │   ├── location.py        # LocationService (CRUD + get_edges)
 │   ├── order.py           # OrderService
-│   └── robot.py           # RobotService
+│   ├── robot.py           # RobotService
+│   └── route_planner.py   # RoutePlannerService
 ├── mappers/               # Aggregates and TransferObjects
+│   ├── bag.py             # BagAggregate
+│   ├── beverage.py        # BeverageAggregate, BeverageYamlObject
+│   ├── item.py            # ItemAggregate, ItemYamlObject
 │   ├── location.py        # LocationAggregate, LocationYamlObject
 │   ├── order.py           # OrderAggregate, OrderSqlObject
 │   └── robot.py           # RobotAggregate, RobotSqlObject
 ├── repos/                 # Repository implementations
+│   ├── beverage.py        # BeverageYamlRepository
+│   ├── item.py            # ItemYamlRepository
 │   ├── location.py        # LocationYamlRepository (YAML-backed)
 │   ├── order.py           # OrderSqliteRepository (SQLite-backed)
 │   ├── robot.py           # RobotSqliteRepository (SQLite-backed)
 │   └── tests/             # Repository unit tests
-│       ├── test_location.py
-│       ├── test_order.py
-│       └── test_robot.py
+├── utils/                 # Infrastructure utilities
+│   ├── backward_chain_selector.py  # BackwardChainSelector (Goal C)
+│   ├── bagger.py          # ForwardChainBagger (Goal B)
+│   └── route_planner.py   # AStarRoutePlanner (Goal A)
 └── events/                # Domain events (Tiferet DomainEvent)
     ├── bag_order.py       # Goal B: forward-chaining FOODIE_BAGGER
     ├── plan_route.py      # Goal A: A* route planning with replanning
@@ -153,12 +181,14 @@ src/
 
 FOODIE follows the **Tiferet** framework's Domain-Driven Design architecture:
 
+- **Configuration** (`config.yml`) – Unified Tiferet v2 configuration defining interfaces, DI services, features, CLI commands, and errors. The `AppBuilder` and `CliBuilder` load this file to bootstrap the application.
 - **Domain Models** (`src/domain/`) – Pydantic v2 models extending `DomainObject`. Each model uses `Field(...)` for validation, `Literal` for constrained choices, and `List[T]` for nested collections.
-- **Domain Events** (`src/events/`) – Stateless operation classes extending `DomainEvent`. Each event implements an `execute(**kwargs)` method and is invoked via the static `DomainEvent.handle(EventClass, **kwargs)` pattern.
-- **Service Interfaces** (`src/interfaces/`) – Abstract service contracts extending `Service`. Define the expected data-access API for each domain (e.g., `LocationService`, `OrderService`).
+- **Domain Events** (`src/events/`) – Operation classes extending `DomainEvent`. Each event receives dependencies via constructor injection and exposes an `execute(**kwargs)` method. Events are resolved from `config.yml` services via Tiferet's DI container.
+- **Service Interfaces** (`src/interfaces/`) – Abstract service contracts extending `Service`. Define the expected data-access and computational APIs for each domain.
 - **Mappers** (`src/mappers/`) – Aggregates (mutation) and TransferObjects (serialization). `LocationYamlObject` handles YAML ↔ domain mapping; `OrderSqlObject`/`RobotSqlObject` handle SQLite ↔ domain mapping.
 - **Repositories** (`src/repos/`) – Concrete service implementations. `LocationYamlRepository` persists to YAML; `OrderSqliteRepository`/`RobotSqliteRepository` persist to SQLite.
-- **Data** – `menu.yml` (item catalog + beverage knowledge base), `campus.yml` (campus terrain graph with locations and edges), `locations.yml` (standalone location definitions).
+- **Utilities** (`src/utils/`) – Concrete computational infrastructure: `AStarRoutePlanner`, `ForwardChainBagger`, `BackwardChainSelector`. Each implements a service interface and is injected via DI.
+- **Data** – `menu.yml` (item catalog + beverage knowledge base), `campus.yml` (campus terrain graph with locations and edges).
 
 ### AI Techniques Implemented
 

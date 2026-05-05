@@ -69,7 +69,21 @@ class SelectBeverage(DomainEvent):
 
         # Load candidate beverages from the service.
         candidates = self.beverage_service.list()
-        facts: Dict[str, Any] = kwargs.get('facts', {})
+
+        # Parse facts from kwargs; accept dict or list of key=value strings (CLI).
+        facts_input = kwargs.get('facts', {})
+        if isinstance(facts_input, list):
+            facts: Dict[str, Any] = {}
+            for pair in facts_input:
+                key, _, val = pair.partition('=')
+                if val.lower() == 'true':
+                    facts[key] = True
+                elif val.lower() == 'false':
+                    facts[key] = False
+                else:
+                    facts[key] = val
+        else:
+            facts = facts_input
 
         # Delegate backward-chaining inference to the select service.
         result = self.beverage_select_service.select(candidates, facts, BEVERAGE_RULES)
