@@ -9,7 +9,7 @@ ECE 479/579 Spring 2026 Final Project/Exam
 
 # ** app
 from .domain import Item, Order, Bag, Location, Robot, Beverage
-from .interfaces import OrderService, RobotService
+from .interfaces import LocationService, OrderService, RobotService
 
 # *** exports
 
@@ -22,6 +22,7 @@ __all__ = [
     'Location',
     'Robot',
     'Beverage',
+    'LocationService',
     'OrderService',
     'RobotService',
 ]

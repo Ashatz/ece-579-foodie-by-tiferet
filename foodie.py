@@ -21,7 +21,7 @@ from tiferet.utils import Yaml
 # ** app
 from src.domain import Item, Order, Bag, Location, Robot, Beverage
 from src.mappers import OrderAggregate, RobotAggregate
-from src.repos import OrderSqliteRepository, RobotSqliteRepository
+from src.repos import LocationYamlRepository, OrderSqliteRepository, RobotSqliteRepository
 from src.events import BagOrder, PlanRoute, SelectBeverage
 
 
@@ -69,36 +69,6 @@ def seed_robots(robot_repo: RobotSqliteRepository, fw: Location) -> None:
         robot_repo.save(robot)
 
 
-def build_campus_graph():
-    '''Build a small campus terrain graph for A* simulation.'''
-    locations = [
-        Location(name='FW', x=0.0, y=0.0, is_food_warehouse=True),
-        Location(name='Pathway_1', x=2.0, y=0.0),
-        Location(name='Pathway_2', x=2.0, y=3.0),
-        Location(name='Pathway_3', x=4.0, y=3.0, is_obstacle_prone=True),
-        Location(name='Pathway_4', x=4.0, y=0.0),
-        Location(name='Pathway_5', x=2.0, y=6.0),
-        Location(name='Pathway_6', x=4.0, y=6.0),
-        Location(name='Building_A', x=5.0, y=8.0),
-        Location(name='Building_B', x=6.0, y=3.0),
-        Location(name='Dorm_1', x=0.0, y=5.0),
-    ]
-    edges = {
-        'FW':         ['Pathway_1', 'Dorm_1'],
-        'Pathway_1':  ['FW', 'Pathway_2', 'Pathway_4'],
-        'Pathway_2':  ['Pathway_1', 'Pathway_3', 'Pathway_5'],
-        'Pathway_3':  ['Pathway_2', 'Pathway_4', 'Pathway_6', 'Building_B'],
-        'Pathway_4':  ['Pathway_1', 'Pathway_3', 'Building_B'],
-        'Pathway_5':  ['Pathway_2', 'Pathway_6', 'Dorm_1'],
-        'Pathway_6':  ['Pathway_5', 'Pathway_3', 'Building_A'],
-        'Building_A': ['Pathway_6'],
-        'Building_B': ['Pathway_3', 'Pathway_4'],
-        'Dorm_1':     ['FW', 'Pathway_5'],
-    }
-    fw = locations[0]
-    return locations, edges, fw
-
-
 def build_beverage_candidates(menu_data: dict) -> list:
     '''Build beverage candidates from menu.yml data.'''
     candidates = []
@@ -122,12 +92,15 @@ if __name__ == '__main__':
         os.remove(DB_PATH)
 
     # Initialize repositories.
+    location_repo = LocationYamlRepository(campus_yaml_file='campus.yml')
     order_repo = OrderSqliteRepository(db_path=DB_PATH)
     robot_repo = RobotSqliteRepository(db_path=DB_PATH)
 
-    # Load menu and build campus graph.
+    # Load menu and campus graph from YAML.
     menu_data = load_menu()
-    locations, edges, fw = build_campus_graph()
+    locations = location_repo.list()
+    edges = location_repo.get_edges()
+    fw = location_repo.get('FW')
 
     # Seed data into SQLite.
     seed_orders(order_repo, menu_data)

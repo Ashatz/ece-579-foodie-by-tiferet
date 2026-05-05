@@ -50,7 +50,7 @@ A single command runs all three goals with sample data:
 python foodie.py
 ```
 
-The script loads item and beverage data from `menu.yml`, then executes:
+The script loads item and beverage data from `menu.yml`, campus terrain from `campus.yml`, then executes:
 1. **Goal B** – bags the sample order (2× water bottles, ice cream, granola box, bread)
 2. **Goal A** – plans routes for 3 orders across a 10-node campus graph with 3 robots
 3. **Goal C** – selects beverages for two guest scenarios via backward chaining
@@ -115,6 +115,8 @@ Backward chaining successful -> beverage selected.
 ```
 foodie.py                  # Main demo script (runs all 3 goals)
 menu.yml                   # Item & beverage data (YAML)
+campus.yml                 # Campus terrain: locations + edge graph (YAML)
+locations.yml              # Standalone location definitions (YAML)
 README.md                  # This file
 src/
 ├── __init__.py            # Package exports
@@ -125,6 +127,22 @@ src/
 │   ├── location.py        # Campus graph node (coordinates, warehouse flag)
 │   ├── robot.py           # Delivery robot (battery, compartments, status)
 │   └── beverage.py        # Beverage (type, brand, health/allergy attributes)
+├── interfaces/            # Service interfaces (Tiferet Service ABC)
+│   ├── location.py        # LocationService (CRUD + get_edges)
+│   ├── order.py           # OrderService
+│   └── robot.py           # RobotService
+├── mappers/               # Aggregates and TransferObjects
+│   ├── location.py        # LocationAggregate, LocationYamlObject
+│   ├── order.py           # OrderAggregate, OrderSqlObject
+│   └── robot.py           # RobotAggregate, RobotSqlObject
+├── repos/                 # Repository implementations
+│   ├── location.py        # LocationYamlRepository (YAML-backed)
+│   ├── order.py           # OrderSqliteRepository (SQLite-backed)
+│   ├── robot.py           # RobotSqliteRepository (SQLite-backed)
+│   └── tests/             # Repository unit tests
+│       ├── test_location.py
+│       ├── test_order.py
+│       └── test_robot.py
 └── events/                # Domain events (Tiferet DomainEvent)
     ├── bag_order.py       # Goal B: forward-chaining FOODIE_BAGGER
     ├── plan_route.py      # Goal A: A* route planning with replanning
@@ -137,7 +155,10 @@ FOODIE follows the **Tiferet** framework's Domain-Driven Design architecture:
 
 - **Domain Models** (`src/domain/`) – Pydantic v2 models extending `DomainObject`. Each model uses `Field(...)` for validation, `Literal` for constrained choices, and `List[T]` for nested collections.
 - **Domain Events** (`src/events/`) – Stateless operation classes extending `DomainEvent`. Each event implements an `execute(**kwargs)` method and is invoked via the static `DomainEvent.handle(EventClass, **kwargs)` pattern.
-- **Data** (`menu.yml`) – Item catalog and beverage knowledge base loaded via Tiferet's `Yaml` utility.
+- **Service Interfaces** (`src/interfaces/`) – Abstract service contracts extending `Service`. Define the expected data-access API for each domain (e.g., `LocationService`, `OrderService`).
+- **Mappers** (`src/mappers/`) – Aggregates (mutation) and TransferObjects (serialization). `LocationYamlObject` handles YAML ↔ domain mapping; `OrderSqlObject`/`RobotSqlObject` handle SQLite ↔ domain mapping.
+- **Repositories** (`src/repos/`) – Concrete service implementations. `LocationYamlRepository` persists to YAML; `OrderSqliteRepository`/`RobotSqliteRepository` persist to SQLite.
+- **Data** – `menu.yml` (item catalog + beverage knowledge base), `campus.yml` (campus terrain graph with locations and edges), `locations.yml` (standalone location definitions).
 
 ### AI Techniques Implemented
 
@@ -169,7 +190,22 @@ beverages:
 ```
 
 ### Modifying the campus graph
-Edit the `build_campus_graph()` function in `foodie.py` to add locations and edges.
+Edit `campus.yml` to add, remove, or modify locations and edges. The format is:
+
+```yaml
+locations:
+  "LocationName":
+    name: "LocationName"
+    x: 0.0               # X coordinate (used by A* heuristic)
+    y: 0.0               # Y coordinate (used by A* heuristic)
+    is_food_warehouse: false
+    is_obstacle_prone: false
+
+edges:
+  "LocationName": ["Neighbor1", "Neighbor2"]
+```
+
+The `locations` section defines graph nodes with coordinates for the Manhattan distance heuristic. The `edges` section defines the bidirectional adjacency list — each location must list its neighbors, and the reverse edge should also be present. A standalone `locations.yml` is also provided for location-only definitions without the edge graph.
 
 ### Modifying guest scenarios
 Edit the `facts` dictionaries in the Goal C section of `foodie.py`. Available fact keys include: `health_nut`, `allergies_citrus`, `guest_age` (adult/minor), `occasion` (casual/celebration/new_years_eve), `setting` (outdoor), `formality` (formal), `entree` (steak/chicken), `guest_liked`.

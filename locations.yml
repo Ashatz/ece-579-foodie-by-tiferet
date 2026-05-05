@@ -1,0 +1,56 @@
+locations:
+  FW:
+    name: FW
+    x: 0.0
+    y: 0.0
+    is_food_warehouse: true
+    is_obstacle_prone: false
+  Pathway_1:
+    name: Pathway_1
+    x: 2.0
+    y: 0.0
+  Pathway_2:
+    name: Pathway_2
+    x: 2.0
+    y: 3.0
+  Pathway_3:
+    name: Pathway_3
+    x: 4.0
+    y: 3.0
+    is_obstacle_prone: true
+  Pathway_4:
+    name: Pathway_4
+    x: 4.0
+    y: 0.0
+  Pathway_5:
+    name: Pathway_5
+    x: 2.0
+    y: 6.0
+  Pathway_6:
+    name: Pathway_6
+    x: 4.0
+    y: 6.0
+  Building_A:
+    name: Building_A
+    x: 5.0
+    y: 8.0
+  Building_B:
+    name: Building_B
+    x: 6.0
+    y: 3.0
+  Dorm_1:
+    name: Dorm_1
+    x: 0.0
+    y: 5.0
+
+edges:
+  FW: [Pathway_1, Dorm_1]
+  Pathway_1: [FW, Pathway_2, Pathway_4]
+  Pathway_2: [Pathway_1, Pathway_3, Pathway_5]
+  Pathway_3: [Pathway_2, Pathway_4, Pathway_6, Building_B]
+  Pathway_4: [Pathway_1, Pathway_3, Building_B]
+  Pathway_5: [Pathway_2, Pathway_6, Dorm_1]
+  Pathway_6: [Pathway_5, Pathway_3, Building_A]
+  Building_A: [Pathway_6]
+  Building_B: [Pathway_3, Pathway_4]
+  Dorm_1: [FW, Pathway_5]
