@@ -1,6 +1,3 @@
-**Here is the corrected and final README.md**
-
-```markdown
 # FOODIE – Food Intelligence Electrified by Tiferet
 
 **ECE 479/579 Principles of Artificial Intelligence**  
@@ -9,102 +6,184 @@
 
 ---
 
-### 1. What is FOODIE?
+## 1. What is FOODIE?
 
-**FOODIE** (Food Intelligence Electrified by Tiferet) is a complete AI expert system designed to autonomously manage a fleet of food-delivery robots on a university campus.  
+**FOODIE** (Food Intelligence Electrified) is an AI expert system that manages a fleet of food-delivery robots on a university campus. It is built on the **Tiferet** framework (v2.0.0b1, Pydantic v2) and implements three core AI techniques from the course syllabus:
 
-It was built using the **Tiferet** framework and directly implements the core AI concepts from the course syllabus:
-- Production Systems & forward chaining (Goal B)
-- State-space search, heuristic search (A*), and replanning (Goal A)
-- Predicate logic and backward chaining (Goal C)
+- **Production Systems & forward chaining** (Goal B)
+- **State-space search, A\* heuristic search, and replanning** (Goal A)
+- **Predicate logic and backward chaining** (Goal C)
 
-### 2. What It Does (Project Goals)
+## 2. Project Goals
 
-| Goal | Feature              | Description |
-|------|----------------------|-------------|
-| **A** | Route Optimization   | Multi-robot A* path planning with energy/time minimization and dynamic replanning for obstacles |
-| **B** | FOODIE_BAGGER        | Rule-based forward-chaining production system for bagging orders (large → medium → small, frozen bags, fragile rules, capacity) |
-| **C** | FOODIE_SPA           | Backward-chaining expert that selects the right beverage for unexpected guests based on health/allergy facts |
+**Goal A – Route Optimization:** Multi-robot A\* path planning on a campus graph with Manhattan-distance heuristic, energy/time minimization, dynamic obstacle detection, and replanning.
 
-**Hybrid Persistence**:
-- YAML (`configs/menu.yml`) for universal/config data (items, beverages)
-- SQLite (`foodie.db`) for runtime/instance-specific data (orders, bags, robots, locations)
+**Goal B – FOODIE_BAGGER:** Forward-chaining rule-based production system that bags food orders by size priority (large → medium → small), uses freezer bags for frozen items, prevents crushing of fragile items, and enforces per-bag capacity limits.
 
-### 3. How to Use It
+**Goal C – FOODIE_SPA:** Backward-chaining expert system (15-rule knowledge base) that selects the appropriate beverage for unexpected guests based on facts such as health preferences, allergies, occasion, and guest age.
 
-#### Quick Start
+## 3. Prerequisites
+
+- Python 3.10+
+- pip
+
+## 4. Setup & Installation
+
 ```bash
-# 1. Activate environment
-python3 -m venv venv
-source venv/bin/activate        # Windows: venv\Scripts\activate
+# Clone the repository
+git clone https://github.com/ashatz/ece-579-foodie-by-tiferet.git
+cd ece-579-foodie-by-tiferet
 
-# 2. Install dependencies
-pip install tiferet
+# Create and activate a virtual environment
+python3 -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
 
-# 3. Seed the system with sample data
-python -m foodie seed-data
-
-# 4. Run the three main goals
-python -m foodie bag-order
-python -m foodie plan-routes
-python -m foodie select-beverage --health-nut --allergies citrus
+# Install the Tiferet framework
+pip install tiferet==2.0.0b1
 ```
 
-#### All Available Commands
+## 5. Running the Simulation
+
+A single command runs all three goals with sample data:
+
 ```bash
-python -m foodie --help
+python foodie.py
 ```
 
-### 4. Expected Outputs
+The script loads item and beverage data from `menu.yml`, then executes:
+1. **Goal B** – bags the sample order (2× water bottles, ice cream, granola box, bread)
+2. **Goal A** – plans routes for 3 orders across a 10-node campus graph with 3 robots
+3. **Goal C** – selects beverages for two guest scenarios via backward chaining
 
-#### FOODIE_BAGGER (Goal B)
-```bash
-=== FOODIE Starting: BAG.ORDER ===
+## 6. Expected Output
+
+### Goal B – FOODIE_BAGGER
+```
 FOODIE_BAGGER forward-chaining production system started...
-Rule Ri says:   Bag large items.
-Rule Rk says:   Put 2x 1-gallon water bottle [large] in bag_1.
-...
+Rule R1 says:   Bag large items.
+Rule R2 says:   Put 1-gallon water bottle in bag_1.
+Rule R3 says:   Put 1-gallon water bottle in bag_1.
+Rule R4 says:   Bag medium items.
+Rule R5 says:   Put pint ice cream in a freezer bag.
+Rule R6 says:   Start a new bag (fragile item).
+Rule R7 says:   Put granola box in bag_3.
+Rule R8 says:   Put loaf of bread in bag_4.
+
 Bagging complete.
-Bag bag_1 (paper) contains: 2x 1-gallon water bottle [large] (2/10)
+  Bag bag_1 (paper) contains: 1x 1-gallon water bottle, 1x 1-gallon water bottle (2/10)
+  Bag freezer_bag_2 (freezer) contains: 1x pint ice cream (1/10)
+  Bag bag_3 (paper) contains: 1x granola box (1/10)
+  Bag bag_4 (paper) contains: 1x loaf of bread (1/10)
 ```
 
-#### Route Planning + Fleet Monitoring (Goal A)
-```bash
-=== FOODIE Starting: PLAN.ROUTES ===
+### Goal A – Route Optimization
+```
 RoutePlannerContext: A* search + multi-robot replanning started...
-Obstacle detected on Pathway 3! Replanning with A*...
-New path found (heuristic h(n) = Manhattan + obstacle penalty).
+Fleet: 3 robots | Orders: 3 | Locations: 10
+
+--- Order ORD-101: FW -> Building_A (Robot R1) ---
+  Path: FW -> Pathway_1 -> Pathway_2 -> Pathway_3 -> Pathway_6 -> Building_A (distance: 13.0)
+  Obstacle detected on Pathway_3 -> Pathway_6! Replanning with A*...
+  New path found (heuristic h(n) = Manhattan + obstacle penalty).
+  Replanned: FW -> Pathway_1 -> Pathway_2 -> ... -> Building_A (distance: 17.0)
 
 === Current Fleet Status ===
-Robot R1 | Loc: FW (Food Warehouse) @ (0.0, 0.0) | Battery: 85.6% | Status: en_route | Bags: 2
+  Robot R1 | Loc: FW (Food Warehouse) @ (0.0, 0.0) | Battery: 98.0% | Status: en_route
+  Robot R2 | Loc: FW (Food Warehouse) @ (0.0, 0.0) | Battery: 98.2% | Status: en_route
+  Robot R3 | Loc: FW (Food Warehouse) @ (0.0, 0.0) | Battery: 99.4% | Status: en_route
 ```
 
-#### FOODIE_SPA (Goal C)
-```bash
-=== FOODIE Starting: SELECT.BEVERAGE ===
+### Goal C – FOODIE_SPA
+```
 FOODIE_SPA backward-chaining inference started...
+Known facts: {'health_nut': True, 'allergies_citrus': True, 'guest_age': 'adult'}
+
+Trying to establish CHOOSE Carrot Juice using rule R9
+  Trying to establish JUICE is indicated using rule R8
+    Fact "health_nut" = True. OK.
+  Rule R8 establishes JUICE is indicated.
+  Fact "allergies_citrus" = True. OK.
+Rule R9 establishes CHOOSE Carrot Juice.
+
+CHOOSE Carrot Juice is True.
 Selected Carrot Juice (FreshRoots) [juice] (health-friendly, avoids:citrus)
-Backward chaining successful → beverage selected.
+Backward chaining successful -> beverage selected.
 ```
 
-### 5. Architecture Overview
+## 7. Project Structure
 
-- Built on the **Tiferet** framework (builders, contexts, domain events, mappers, hybrid repositories)
-- Clean separation of concerns following Domain-Driven Design
-- Real-time simulation traces for all goals (exactly as required by the project specification)
+```
+foodie.py                  # Main demo script (runs all 3 goals)
+menu.yml                   # Item & beverage data (YAML)
+README.md                  # This file
+src/
+├── __init__.py            # Package exports
+├── domain/                # Pydantic domain models (Tiferet DomainObject)
+│   ├── item.py            # Food item (name, size, frozen, fragile, quantity)
+│   ├── bag.py             # Bag (paper/freezer, capacity rules, items list)
+│   ├── order.py           # Customer order (items, destination, status)
+│   ├── location.py        # Campus graph node (coordinates, warehouse flag)
+│   ├── robot.py           # Delivery robot (battery, compartments, status)
+│   └── beverage.py        # Beverage (type, brand, health/allergy attributes)
+└── events/                # Domain events (Tiferet DomainEvent)
+    ├── bag_order.py       # Goal B: forward-chaining FOODIE_BAGGER
+    ├── plan_route.py      # Goal A: A* route planning with replanning
+    └── select_beverage.py # Goal C: backward-chaining FOODIE_SPA
+```
 
-### 6. Submission Files
+## 8. Architecture
 
-1. **Project Report** (includes this README + architecture + sample outputs)
-2. **Code** – entire `foodie/` package
-3. **Instructions to run your system** – see section 3 above
+FOODIE follows the **Tiferet** framework's Domain-Driven Design architecture:
+
+- **Domain Models** (`src/domain/`) – Pydantic v2 models extending `DomainObject`. Each model uses `Field(...)` for validation, `Literal` for constrained choices, and `List[T]` for nested collections.
+- **Domain Events** (`src/events/`) – Stateless operation classes extending `DomainEvent`. Each event implements an `execute(**kwargs)` method and is invoked via the static `DomainEvent.handle(EventClass, **kwargs)` pattern.
+- **Data** (`menu.yml`) – Item catalog and beverage knowledge base loaded via Tiferet's `Yaml` utility.
+
+### AI Techniques Implemented
+
+- **A\* Search** (`plan_route.py`): Uses `heapq` priority queue, Manhattan distance heuristic, and adjacency-list graph representation. Supports dynamic obstacle detection and mid-route replanning.
+- **Forward Chaining** (`bag_order.py`): Production system with size-priority ordering, frozen/fragile/capacity rules, and sequential rule-firing trace output.
+- **Backward Chaining** (`select_beverage.py`): 15-rule knowledge base with recursive goal decomposition. Rules chain from specific beverages through intermediate conclusions (e.g., "JUICE is indicated") back to guest facts.
+
+## 9. Customizing the Simulation
+
+### Modifying items or beverages
+Edit `menu.yml` to add/remove items or beverages. The format is:
+
+```yaml
+items:
+  "item name":
+    name: "item name"
+    size: "large"    # large, medium, or small
+    is_frozen: false
+    is_fragile: false
+    quantity: 1
+
+beverages:
+  "beverage name":
+    name: "beverage name"
+    beverage_type: "juice"  # water, juice, wine, beer, or liquor
+    brand: "Brand Name"
+    is_health_friendly: true
+    avoids_allergens: "citrus, gluten"
+```
+
+### Modifying the campus graph
+Edit the `build_campus_graph()` function in `foodie.py` to add locations and edges.
+
+### Modifying guest scenarios
+Edit the `facts` dictionaries in the Goal C section of `foodie.py`. Available fact keys include: `health_nut`, `allergies_citrus`, `guest_age` (adult/minor), `occasion` (casual/celebration/new_years_eve), `setting` (outdoor), `formality` (formal), `entree` (steak/chicken), `guest_liked`.
+
+## 10. Submission Files
+
+1. **Project Report** – includes architecture, algorithms, rule bases, STRIPS rules, and sample runs
+2. **Code** – this repository
+3. **Instructions** – this README (Section 4–5)
 
 ---
 
-**Developed by:**  
-Andrew Shatz
+**Developed by:** Andrew Shatz
 
-**AI Tutor & Architectural Guidance:**  
-Grok (xAI) – Assisted with Tiferet framework implementation, domain modeling, repository design, and iterative refinement of the entire codebase.
-
-This project was built step-by-step in close collaboration with Grok, strictly following the Tiferet architecture and the ECE 479/579 syllabus.
+**AI Tools Used:**
+- Grok (xAI) – Initial scaffolding and domain modeling
+- Oz (Warp) – Framework upgrade to tiferet 2.0.0b1, Pydantic v2 rewrite, A\* implementation, backward-chaining engine, and full system integration
