@@ -278,6 +278,13 @@ Guide documents for each layer of the FOODIE codebase are available in `docs/gui
 - [ForwardChainBagger](docs/guides/utils/bagger.md) — Forward-chaining production system, rule priority, bagging logic (Goal B)
 - [BackwardChainSelector](docs/guides/utils/backward_chain_selector.md) — Backward-chaining inference engine, 15-rule knowledge base (Goal C)
 
+### Domain Event Guides
+
+- [SeedDatabase](docs/guides/events/seed_database.md) — Idempotent database seeding with demo orders and robots
+- [BagOrder](docs/guides/events/bag_order.md) — Order loading, item expansion, and forward-chaining delegation (Goal B)
+- [PlanRoute](docs/guides/events/plan_route.md) — Fleet orchestration, round-robin assignment, and A* delegation (Goal A)
+- [SelectBeverage](docs/guides/events/select_beverage.md) — Fact parsing, backward-chaining delegation, and fallback logic (Goal C)
+
 ## 11. Submission Files
 
 1. **Project Report** – includes architecture, algorithms, rule bases, STRIPS rules, and sample runs

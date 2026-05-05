@@ -110,6 +110,13 @@ Guide documents are in `docs/guides/`:
 - `bagger.md` — ForwardChainBagger (forward-chaining production system, rule priority; Goal B).
 - `backward_chain_selector.md` — BackwardChainSelector (backward-chaining inference, 15-rule knowledge base; Goal C).
 
+### Domain Event Guides (`docs/guides/events/`)
+
+- `seed_database.md` — SeedDatabase (idempotent database seeding with demo orders and robots).
+- `bag_order.md` — BagOrder (order loading, item expansion, forward-chaining delegation; Goal B).
+- `plan_route.md` — PlanRoute (fleet orchestration, round-robin assignment, A* delegation; Goal A).
+- `select_beverage.md` — SelectBeverage (fact parsing, backward-chaining delegation, fallback; Goal C).
+
 ## Testing
 
 - **Framework:** pytest
