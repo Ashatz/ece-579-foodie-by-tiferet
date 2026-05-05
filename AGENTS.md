@@ -19,7 +19,7 @@ foodie_cli.py          # CLI entry point (CliBuilder)
 config.yml             # Unified Tiferet v2 config (interfaces, services, features, cli, errors)
 src/
 ├── domain/            # Pydantic v2 domain models (Item, Bag, Order, Location, Robot, Beverage)
-├── events/            # Domain events (BagOrder, PlanRoute, SelectBeverage)
+├── events/            # Domain events (SeedDatabase, BagOrder, PlanRoute, SelectBeverage)
 ├── interfaces/        # Service ABCs (BaggingService, BeverageService, LocationService, etc.)
 ├── mappers/           # Aggregates + TransferObjects
 ├── repos/             # YAML and SQLite repository implementations
@@ -41,6 +41,7 @@ src/
 
 ### Features (admin group)
 
+- `admin.seed_database` — Pre-seed SQLite database with demo orders and robots.
 - `admin.bag_order` — Forward-chaining bagging (Goal B).
 - `admin.plan_route` — A* route planning with replanning (Goal A).
 - `admin.select_beverage` — Backward-chaining beverage selection (Goal C).

@@ -7,6 +7,9 @@ interfaces:
     description: FOODIE command-line interface
 
 services:
+  seed_database_evt:
+    module_path: src.events.seed_database
+    class_name: SeedDatabase
   bag_order_evt:
     module_path: src.events.bag_order
     class_name: BagOrder
@@ -53,6 +56,12 @@ services:
 
 features:
   admin:
+    seed_database:
+      name: Seed Database
+      description: Pre-seed the SQLite database with demo orders and robots
+      steps:
+        - service_id: seed_database_evt
+          name: Execute database seeding
     bag_order:
       name: Bag Order
       description: Bag an order using forward-chaining rules
@@ -75,6 +84,11 @@ features:
 cli:
   cmds:
     admin:
+      seed-database:
+        name: Seed Database Command
+        key: seed-database
+        group_key: admin
+        description: Pre-seed the SQLite database with demo orders and robots.
       bag-order:
         name: Bag Order Command
         key: bag-order

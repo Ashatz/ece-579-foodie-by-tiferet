@@ -50,13 +50,16 @@ A single command runs all three goals with sample data:
 python foodie.py
 ```
 
-The script seeds demo data, then uses the Tiferet `AppBuilder` to execute each goal as a configured feature (`admin.bag_order`, `admin.plan_route`, `admin.select_beverage`).
+The script uses the Tiferet `AppBuilder` to first seed the SQLite database (`admin.seed_database`), then execute each goal as a configured feature (`admin.bag_order`, `admin.plan_route`, `admin.select_beverage`).
 
 ### CLI Interface
 
 FOODIE also provides a command-line interface via `foodie_cli.py`:
 
 ```bash
+# Seed the database with demo data (orders + robots)
+python foodie_cli.py admin seed-database
+
 # Bag an order
 python foodie_cli.py admin bag-order ORD-101
 
@@ -70,6 +73,21 @@ python foodie_cli.py admin select-beverage health_nut=True allergies_citrus=True
 The CLI uses Tiferet's `CliBuilder` to parse arguments via `argparse` and dispatch to the same features defined in `config.yml`.
 
 ## 6. Expected Output
+
+### Database Seeding
+```
+SeedDatabase: Pre-seeding SQLite database with demo data...
+
+  Seeded order ORD-101 -> Building_A (4 items)
+  Seeded order ORD-102 -> Building_B (0 items)
+  Seeded order ORD-103 -> Dorm_1 (0 items)
+
+  Seeded robot R1 at FW
+  Seeded robot R2 at FW
+  Seeded robot R3 at FW
+
+SeedDatabase complete: 3 orders, 3 robots.
+```
 
 ### Goal B – FOODIE_BAGGER
 ```
@@ -172,6 +190,7 @@ src/
 │   ├── bagger.py          # ForwardChainBagger (Goal B)
 │   └── route_planner.py   # AStarRoutePlanner (Goal A)
 └── events/                # Domain events (Tiferet DomainEvent)
+    ├── seed_database.py   # Pre-seed SQLite with demo orders and robots
     ├── bag_order.py       # Goal B: forward-chaining FOODIE_BAGGER
     ├── plan_route.py      # Goal A: A* route planning with replanning
     └── select_beverage.py # Goal C: backward-chaining FOODIE_SPA
@@ -183,7 +202,7 @@ FOODIE follows the **Tiferet** framework's Domain-Driven Design architecture:
 
 - **Configuration** (`config.yml`) – Unified Tiferet v2 configuration defining interfaces, DI services, features, CLI commands, and errors. The `AppBuilder` and `CliBuilder` load this file to bootstrap the application.
 - **Domain Models** (`src/domain/`) – Pydantic v2 models extending `DomainObject`. Each model uses `Field(...)` for validation, `Literal` for constrained choices, and `List[T]` for nested collections.
-- **Domain Events** (`src/events/`) – Operation classes extending `DomainEvent`. Each event receives dependencies via constructor injection and exposes an `execute(**kwargs)` method. Events are resolved from `config.yml` services via Tiferet's DI container.
+- **Domain Events** (`src/events/`) – Operation classes extending `DomainEvent`. Each event receives dependencies via constructor injection and exposes an `execute(**kwargs)` method. Events are resolved from `config.yml` services via Tiferet's DI container. The `SeedDatabase` event pre-seeds the SQLite database with demo orders and robots before the simulation begins.
 - **Service Interfaces** (`src/interfaces/`) – Abstract service contracts extending `Service`. Define the expected data-access and computational APIs for each domain.
 - **Mappers** (`src/mappers/`) – Aggregates (mutation) and TransferObjects (serialization). `LocationYamlObject` handles YAML ↔ domain mapping; `OrderSqlObject`/`RobotSqlObject` handle SQLite ↔ domain mapping.
 - **Repositories** (`src/repos/`) – Concrete service implementations. `LocationYamlRepository` persists to YAML; `OrderSqliteRepository`/`RobotSqliteRepository` persist to SQLite.

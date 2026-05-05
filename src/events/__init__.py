@@ -10,6 +10,7 @@ Each event implements one of the three project goals.
 # ** app
 from .bag_order import BagOrder
 from .plan_route import PlanRoute
+from .seed_database import SeedDatabase
 from .select_beverage import SelectBeverage
 
 # *** exports
@@ -17,5 +18,6 @@ from .select_beverage import SelectBeverage
 __all__ = [
     'BagOrder',
     'PlanRoute',
+    'SeedDatabase',
     'SelectBeverage',
 ]
