@@ -21,7 +21,7 @@ src/
 ├── domain/            # Pydantic v2 domain models (Item, Bag, Order, Location, Robot, Beverage)
 ├── events/            # Domain events (SeedDatabase, BagOrder, PlanRoute, SelectBeverage)
 ├── interfaces/        # Service ABCs (BaggingService, BeverageService, LocationService, etc.)
-├── mappers/           # Aggregates + TransferObjects
+├── mappers/           # Aggregates + TransferObjects (item, bag, beverage, location, order, robot)
 ├── repos/             # YAML and SQLite repository implementations
 ├── utils/             # Computational utilities (AStarRoutePlanner, ForwardChainBagger, BackwardChainSelector)
 └── assets/            # Constants (beverage rules, fallback data)
@@ -110,6 +110,15 @@ Guide documents are in `docs/guides/`:
 - `bagger.md` — ForwardChainBagger (forward-chaining production system, rule priority; Goal B).
 - `backward_chain_selector.md` — BackwardChainSelector (backward-chaining inference, 15-rule knowledge base; Goal C).
 
+### Mapper Guides (`docs/guides/mappers/`)
+
+- `item.md` — ItemAggregate and ItemYamlObject (flat YAML serialization for menu items).
+- `location.md` — LocationAggregate and LocationYamlObject (flat YAML serialization for campus nodes).
+- `beverage.md` — BeverageAggregate and BeverageYamlObject (flat YAML serialization for knowledge base).
+- `bag.md` — BagAggregate (aggregate-only with static factory methods; no TransferObject).
+- `order.md` — OrderAggregate and OrderSqlObject (nested items JSON serialization for SQLite).
+- `robot.md` — RobotAggregate and RobotSqlObject (dual nested JSON serialization for SQLite).
+
 ### Domain Event Guides (`docs/guides/events/`)
 
 - `seed_database.md` — SeedDatabase (idempotent database seeding with demo orders and robots).
@@ -120,8 +129,11 @@ Guide documents are in `docs/guides/`:
 ## Testing
 
 - **Framework:** pytest
+- **Domain tests:** `src/domain/tests/`
+- **Mapper tests:** `src/mappers/tests/`
 - **Repository tests:** `src/repos/tests/`
-- **Run:** `pytest src/` from project root (with venv activated).
+- **Run all:** `pytest src/` from project root (with venv activated).
+- **Run mappers only:** `pytest src/mappers/` from project root.
 
 ## Contributing
 

@@ -204,7 +204,7 @@ FOODIE follows the **Tiferet** framework's Domain-Driven Design architecture:
 - **Domain Models** (`src/domain/`) – Pydantic v2 models extending `DomainObject`. Each model uses `Field(...)` for validation, `Literal` for constrained choices, and `List[T]` for nested collections.
 - **Domain Events** (`src/events/`) – Operation classes extending `DomainEvent`. Each event receives dependencies via constructor injection and exposes an `execute(**kwargs)` method. Events are resolved from `config.yml` services via Tiferet's DI container. The `SeedDatabase` event pre-seeds the SQLite database with demo orders and robots before the simulation begins.
 - **Service Interfaces** (`src/interfaces/`) – Abstract service contracts extending `Service`. Define the expected data-access and computational APIs for each domain.
-- **Mappers** (`src/mappers/`) – Aggregates (mutation) and TransferObjects (serialization). `LocationYamlObject` handles YAML ↔ domain mapping; `OrderSqlObject`/`RobotSqlObject` handle SQLite ↔ domain mapping.
+- **Mappers** (`src/mappers/`) – Aggregates provide validated mutation methods (e.g., `update_status`, `update_battery`); TransferObjects provide role-based serialization for persistence. Three patterns exist: flat YAML-backed mappers (`ItemYamlObject`, `LocationYamlObject`, `BeverageYamlObject`), an aggregate-only mapper (`BagAggregate` with static factories), and SQL-backed mappers with custom JSON serialization (`OrderSqlObject` with one JSON column, `RobotSqlObject` with two).
 - **Repositories** (`src/repos/`) – Concrete service implementations. `LocationYamlRepository` persists to YAML; `OrderSqliteRepository`/`RobotSqliteRepository` persist to SQLite.
 - **Utilities** (`src/utils/`) – Concrete computational infrastructure: `AStarRoutePlanner`, `ForwardChainBagger`, `BackwardChainSelector`. Each implements a service interface and is injected via DI.
 - **Data** – `menu.yml` (item catalog + beverage knowledge base), `campus.yml` (campus terrain graph with locations and edges).
@@ -277,6 +277,15 @@ Guide documents for each layer of the FOODIE codebase are available in `docs/gui
 - [AStarRoutePlanner](docs/guides/utils/route_planner.md) — A* search algorithm, Manhattan heuristic, obstacle replanning (Goal A)
 - [ForwardChainBagger](docs/guides/utils/bagger.md) — Forward-chaining production system, rule priority, bagging logic (Goal B)
 - [BackwardChainSelector](docs/guides/utils/backward_chain_selector.md) — Backward-chaining inference engine, 15-rule knowledge base (Goal C)
+
+### Mapper Guides
+
+- [Item Mappers](docs/guides/mappers/item.md) — ItemAggregate and ItemYamlObject (flat YAML serialization)
+- [Location Mappers](docs/guides/mappers/location.md) — LocationAggregate and LocationYamlObject (flat YAML serialization)
+- [Beverage Mappers](docs/guides/mappers/beverage.md) — BeverageAggregate and BeverageYamlObject (flat YAML serialization)
+- [Bag Mapper](docs/guides/mappers/bag.md) — BagAggregate (aggregate-only, static factories)
+- [Order Mappers](docs/guides/mappers/order.md) — OrderAggregate and OrderSqlObject (nested JSON serialization)
+- [Robot Mappers](docs/guides/mappers/robot.md) — RobotAggregate and RobotSqlObject (dual nested JSON serialization)
 
 ### Domain Event Guides
 
