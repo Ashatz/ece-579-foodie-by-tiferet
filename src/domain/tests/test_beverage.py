@@ -1,4 +1,6 @@
-'''FOODIE Beverage Domain Model Tests'''
+"""
+FOODIE Beverage Domain Model Tests
+"""
 
 # *** imports
 
@@ -8,190 +10,187 @@ import pytest
 # ** app
 from ..beverage import Beverage
 
-
 # *** fixtures
-
-# ** fixture: default_beverage
-@pytest.fixture
-def default_beverage() -> Beverage:
-    '''
-    Create a Beverage with only required fields, relying on defaults.
-
-    :return: A Beverage instance with default optional values.
-    :rtype: Beverage
-    '''
-    return Beverage(name='Tap Water', beverage_type='water', brand='City Water')
-
 
 # ** fixture: health_beverage
 @pytest.fixture
 def health_beverage() -> Beverage:
     '''
-    Create a health-friendly Beverage that avoids common allergens.
+    A health-friendly beverage that avoids gluten.
 
-    :return: A Beverage instance with health-friendly and allergen avoidance.
+    :return: A health-friendly Beverage instance.
     :rtype: Beverage
     '''
+
     return Beverage(
-        name='Green Juice',
+        name='FreshRoots Juice',
         beverage_type='juice',
-        brand='Organic Co',
+        brand='FreshRoots',
         is_health_friendly=True,
         avoids_allergens='gluten, dairy',
     )
 
 
+# ** fixture: regular_beverage
+@pytest.fixture
+def regular_beverage() -> Beverage:
+    '''
+    A regular beverage with no special properties.
+
+    :return: A regular Beverage instance.
+    :rtype: Beverage
+    '''
+
+    return Beverage(
+        name='Corona',
+        beverage_type='beer',
+        brand='Corona',
+    )
+
+
 # *** tests
 
-# ** test: beverage_instantiation_defaults
-def test_beverage_instantiation_defaults(default_beverage: Beverage) -> None:
+# ** test: instantiation_defaults
+def test_instantiation_defaults(regular_beverage: Beverage) -> None:
     '''
-    Test that a Beverage created with only required fields has correct defaults.
+    Test that default field values are applied correctly.
 
-    :param default_beverage: Beverage fixture with defaults.
-    :type default_beverage: Beverage
+    :param regular_beverage: A regular Beverage instance.
+    :type regular_beverage: Beverage
     '''
 
-    # Assert required fields are set.
-    assert default_beverage.name == 'Tap Water'
-    assert default_beverage.beverage_type == 'water'
-    assert default_beverage.brand == 'City Water'
-
-    # Assert optional fields have correct defaults.
-    assert default_beverage.is_health_friendly is False
-    assert default_beverage.avoids_allergens == ''
+    assert regular_beverage.name == 'Corona'
+    assert regular_beverage.beverage_type == 'beer'
+    assert regular_beverage.brand == 'Corona'
+    assert regular_beverage.is_health_friendly is False
+    assert regular_beverage.avoids_allergens == ''
 
 
-# ** test: beverage_instantiation_all_fields
-def test_beverage_instantiation_all_fields(health_beverage: Beverage) -> None:
+# ** test: instantiation_all_fields
+def test_instantiation_all_fields(health_beverage: Beverage) -> None:
     '''
-    Test that a Beverage created with all fields has correct values.
+    Test that all fields can be set explicitly.
 
-    :param health_beverage: Beverage fixture with all fields.
+    :param health_beverage: A health-friendly Beverage instance.
     :type health_beverage: Beverage
     '''
 
-    # Assert all fields are set correctly.
-    assert health_beverage.name == 'Green Juice'
+    assert health_beverage.name == 'FreshRoots Juice'
     assert health_beverage.beverage_type == 'juice'
-    assert health_beverage.brand == 'Organic Co'
+    assert health_beverage.brand == 'FreshRoots'
     assert health_beverage.is_health_friendly is True
     assert health_beverage.avoids_allergens == 'gluten, dairy'
 
 
-# ** test: beverage_matches_guest_no_constraints
-def test_beverage_matches_guest_no_constraints(default_beverage: Beverage) -> None:
+# ** test: matches_guest_no_constraints
+def test_matches_guest_no_constraints(regular_beverage: Beverage) -> None:
     '''
-    Test matches_guest with no constraints (not health nut, no allergies).
+    Test that a regular beverage matches a guest with no constraints.
 
-    :param default_beverage: Beverage fixture with defaults.
-    :type default_beverage: Beverage
-    '''
-
-    # Assert any beverage matches when there are no constraints.
-    assert default_beverage.matches_guest(is_health_nut=False, allergies=None) is True
-
-
-# ** test: beverage_matches_guest_health_nut_rejects
-def test_beverage_matches_guest_health_nut_rejects(default_beverage: Beverage) -> None:
-    '''
-    Test matches_guest rejects non-health-friendly beverage for health nut.
-
-    :param default_beverage: Beverage fixture (not health-friendly).
-    :type default_beverage: Beverage
+    :param regular_beverage: A regular Beverage instance.
+    :type regular_beverage: Beverage
     '''
 
-    # Assert a non-health-friendly beverage is rejected for a health nut.
-    assert default_beverage.matches_guest(is_health_nut=True, allergies=None) is False
+    assert regular_beverage.matches_guest() is True
 
 
-# ** test: beverage_matches_guest_health_nut_accepts
-def test_beverage_matches_guest_health_nut_accepts(health_beverage: Beverage) -> None:
+# ** test: matches_guest_health_nut_rejects
+def test_matches_guest_health_nut_rejects(regular_beverage: Beverage) -> None:
     '''
-    Test matches_guest accepts health-friendly beverage for health nut.
+    Test that a non-health-friendly beverage is rejected for health-nut guests.
 
-    :param health_beverage: Beverage fixture (health-friendly).
+    :param regular_beverage: A regular Beverage instance.
+    :type regular_beverage: Beverage
+    '''
+
+    assert regular_beverage.matches_guest(is_health_nut=True) is False
+
+
+# ** test: matches_guest_health_nut_accepts
+def test_matches_guest_health_nut_accepts(health_beverage: Beverage) -> None:
+    '''
+    Test that a health-friendly beverage is accepted for health-nut guests.
+
+    :param health_beverage: A health-friendly Beverage instance.
     :type health_beverage: Beverage
     '''
 
-    # Assert a health-friendly beverage is accepted for a health nut.
-    assert health_beverage.matches_guest(is_health_nut=True, allergies=None) is True
+    assert health_beverage.matches_guest(is_health_nut=True) is True
 
 
-# ** test: beverage_matches_guest_allergy_satisfied
-def test_beverage_matches_guest_allergy_satisfied(health_beverage: Beverage) -> None:
+# ** test: matches_guest_allergy_satisfied
+def test_matches_guest_allergy_satisfied(health_beverage: Beverage) -> None:
     '''
-    Test matches_guest when beverage avoids the guest's allergy.
+    Test that a beverage matching allergen avoidance satisfies allergy constraints.
 
-    :param health_beverage: Beverage fixture avoiding gluten and dairy.
+    :param health_beverage: A health-friendly Beverage instance.
     :type health_beverage: Beverage
     '''
 
-    # Assert the beverage matches when allergy is in the avoided set.
-    assert health_beverage.matches_guest(is_health_nut=False, allergies=['gluten']) is True
+    assert health_beverage.matches_guest(allergies=['gluten']) is True
 
 
-# ** test: beverage_matches_guest_allergy_not_satisfied
-def test_beverage_matches_guest_allergy_not_satisfied(default_beverage: Beverage) -> None:
+# ** test: matches_guest_allergy_not_satisfied
+def test_matches_guest_allergy_not_satisfied(health_beverage: Beverage) -> None:
     '''
-    Test matches_guest rejects when beverage does not avoid the guest's allergy.
+    Test that a beverage is rejected when it does not avoid the required allergen.
 
-    :param default_beverage: Beverage fixture with no allergen avoidance.
-    :type default_beverage: Beverage
-    '''
-
-    # Assert the beverage is rejected when allergy is not in the avoided set.
-    assert default_beverage.matches_guest(is_health_nut=False, allergies=['nuts']) is False
-
-
-# ** test: beverage_matches_guest_multiple_allergies
-def test_beverage_matches_guest_multiple_allergies(health_beverage: Beverage) -> None:
-    '''
-    Test matches_guest with multiple allergies, all satisfied.
-
-    :param health_beverage: Beverage fixture avoiding gluten and dairy.
+    :param health_beverage: A health-friendly Beverage instance.
     :type health_beverage: Beverage
     '''
 
-    # Assert both allergies are satisfied.
-    assert health_beverage.matches_guest(is_health_nut=False, allergies=['gluten', 'dairy']) is True
+    assert health_beverage.matches_guest(allergies=['nuts']) is False
 
 
-# ** test: beverage_matches_guest_combined_constraints
-def test_beverage_matches_guest_combined_constraints(health_beverage: Beverage) -> None:
+# ** test: matches_guest_multiple_allergies
+def test_matches_guest_multiple_allergies(health_beverage: Beverage) -> None:
     '''
-    Test matches_guest with both health-nut and allergy constraints.
+    Test matching with multiple allergies (all must be avoided).
 
-    :param health_beverage: Beverage fixture (health-friendly, avoids gluten and dairy).
+    :param health_beverage: A health-friendly Beverage instance.
     :type health_beverage: Beverage
     '''
 
-    # Assert beverage satisfies both health-nut and allergy constraints.
-    assert health_beverage.matches_guest(is_health_nut=True, allergies=['dairy']) is True
+    assert health_beverage.matches_guest(allergies=['gluten', 'dairy']) is True
+    assert health_beverage.matches_guest(allergies=['gluten', 'nuts']) is False
 
 
-# ** test: beverage_format_for_trace_plain
-def test_beverage_format_for_trace_plain(default_beverage: Beverage) -> None:
+# ** test: matches_guest_combined_constraints
+def test_matches_guest_combined_constraints(health_beverage: Beverage) -> None:
+    '''
+    Test matching with both health-nut and allergy constraints combined.
+
+    :param health_beverage: A health-friendly Beverage instance.
+    :type health_beverage: Beverage
+    '''
+
+    assert health_beverage.matches_guest(is_health_nut=True, allergies=['gluten']) is True
+    assert health_beverage.matches_guest(is_health_nut=True, allergies=['nuts']) is False
+
+
+# ** test: format_for_trace_plain
+def test_format_for_trace_plain(regular_beverage: Beverage) -> None:
     '''
     Test format_for_trace with no flags.
 
-    :param default_beverage: Beverage fixture with defaults.
-    :type default_beverage: Beverage
+    :param regular_beverage: A regular Beverage instance.
+    :type regular_beverage: Beverage
     '''
 
-    # Assert the formatted string has no flag annotations.
-    assert default_beverage.format_for_trace() == 'Selected Tap Water (City Water) [water]'
+    result = regular_beverage.format_for_trace()
+
+    assert result == 'Selected Corona (Corona) [beer]'
 
 
-# ** test: beverage_format_for_trace_with_flags
-def test_beverage_format_for_trace_with_flags(health_beverage: Beverage) -> None:
+# ** test: format_for_trace_with_flags
+def test_format_for_trace_with_flags(health_beverage: Beverage) -> None:
     '''
     Test format_for_trace with health-friendly and allergen flags.
 
-    :param health_beverage: Beverage fixture with flags.
+    :param health_beverage: A health-friendly Beverage instance.
     :type health_beverage: Beverage
     '''
 
-    # Assert the formatted string includes flag annotations.
-    expected = 'Selected Green Juice (Organic Co) [juice] (health-friendly, avoids: gluten, dairy)'
-    assert health_beverage.format_for_trace() == expected
+    result = health_beverage.format_for_trace()
+
+    assert result == 'Selected FreshRoots Juice (FreshRoots) [juice] (health-friendly, avoids:gluten, dairy)'

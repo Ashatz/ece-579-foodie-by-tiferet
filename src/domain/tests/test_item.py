@@ -1,4 +1,6 @@
-'''FOODIE Item Domain Model Tests'''
+"""
+FOODIE Item Domain Model Tests
+"""
 
 # *** imports
 
@@ -9,133 +11,149 @@ from pydantic import ValidationError
 # ** app
 from ..item import Item
 
-
 # *** fixtures
 
-# ** fixture: default_item
+# ** fixture: plain_item
 @pytest.fixture
-def default_item() -> Item:
+def plain_item() -> Item:
     '''
-    Create an Item with only required fields, relying on defaults.
+    A plain item with no special flags.
 
-    :return: An Item instance with default optional values.
+    :return: A plain Item instance.
     :rtype: Item
     '''
-    return Item(name='Apple', size='small')
+
+    return Item(name='Water Bottle', size='large')
 
 
-# ** fixture: full_item
+# ** fixture: frozen_item
 @pytest.fixture
-def full_item() -> Item:
+def frozen_item() -> Item:
     '''
-    Create an Item with all fields explicitly set.
+    A frozen item.
 
-    :return: An Item instance with all fields populated.
+    :return: A frozen Item instance.
     :rtype: Item
     '''
-    return Item(
-        name='Ice Cream',
-        size='large',
-        is_frozen=True,
-        is_fragile=True,
-        quantity=3,
-    )
+
+    return Item(name='Ice Cream', size='medium', is_frozen=True)
+
+
+# ** fixture: fragile_item
+@pytest.fixture
+def fragile_item() -> Item:
+    '''
+    A fragile item.
+
+    :return: A fragile Item instance.
+    :rtype: Item
+    '''
+
+    return Item(name='Eggs', size='small', is_fragile=True)
 
 
 # *** tests
 
-# ** test: item_instantiation_defaults
-def test_item_instantiation_defaults(default_item: Item) -> None:
+# ** test: instantiation_defaults
+def test_instantiation_defaults(plain_item: Item) -> None:
     '''
-    Test that an Item created with only required fields has correct defaults.
+    Test that default field values are applied correctly.
 
-    :param default_item: Item fixture with defaults.
-    :type default_item: Item
-    '''
-
-    # Assert required fields are set.
-    assert default_item.name == 'Apple'
-    assert default_item.size == 'small'
-
-    # Assert optional fields have correct defaults.
-    assert default_item.is_frozen is False
-    assert default_item.is_fragile is False
-    assert default_item.quantity == 1
-
-
-# ** test: item_instantiation_all_fields
-def test_item_instantiation_all_fields(full_item: Item) -> None:
-    '''
-    Test that an Item created with all fields has correct values.
-
-    :param full_item: Item fixture with all fields.
-    :type full_item: Item
+    :param plain_item: A plain Item instance.
+    :type plain_item: Item
     '''
 
-    # Assert all fields are set correctly.
-    assert full_item.name == 'Ice Cream'
-    assert full_item.size == 'large'
-    assert full_item.is_frozen is True
-    assert full_item.is_fragile is True
-    assert full_item.quantity == 3
+    assert plain_item.name == 'Water Bottle'
+    assert plain_item.size == 'large'
+    assert plain_item.is_frozen is False
+    assert plain_item.is_fragile is False
+    assert plain_item.quantity == 1
 
 
-# ** test: item_invalid_size
-def test_item_invalid_size() -> None:
+# ** test: instantiation_all_fields
+def test_instantiation_all_fields() -> None:
     '''
-    Test that an invalid size raises a ValidationError.
+    Test that all fields can be set explicitly.
     '''
 
-    # Attempt to create an Item with an invalid size.
+    item = Item(name='Pizza', size='large', is_frozen=True, is_fragile=False, quantity=3)
+
+    assert item.name == 'Pizza'
+    assert item.size == 'large'
+    assert item.is_frozen is True
+    assert item.is_fragile is False
+    assert item.quantity == 3
+
+
+# ** test: invalid_size_rejected
+def test_invalid_size_rejected() -> None:
+    '''
+    Test that an invalid size literal raises a validation error.
+    '''
+
     with pytest.raises(ValidationError):
-        Item(name='Apple', size='extra-large')
+        Item(name='Unknown', size='huge')
 
 
-# ** test: item_quantity_minimum
-def test_item_quantity_minimum() -> None:
+# ** test: quantity_minimum
+def test_quantity_minimum() -> None:
     '''
-    Test that a quantity below 1 raises a ValidationError.
+    Test that quantity below 1 is rejected.
     '''
 
-    # Attempt to create an Item with quantity 0.
     with pytest.raises(ValidationError):
-        Item(name='Apple', size='small', quantity=0)
+        Item(name='Water', size='small', quantity=0)
 
 
-# ** test: item_format_for_bagger_plain
-def test_item_format_for_bagger_plain(default_item: Item) -> None:
+# ** test: format_for_bagger_plain
+def test_format_for_bagger_plain(plain_item: Item) -> None:
     '''
     Test format_for_bagger with no flags.
 
-    :param default_item: Item fixture with defaults.
-    :type default_item: Item
+    :param plain_item: A plain Item instance.
+    :type plain_item: Item
     '''
 
-    # Assert the formatted string has no flag annotations.
-    assert default_item.format_for_bagger() == '1x Apple [small]'
+    result = plain_item.format_for_bagger()
+
+    assert result == '1x Water Bottle [large]'
 
 
-# ** test: item_format_for_bagger_frozen
-def test_item_format_for_bagger_frozen() -> None:
+# ** test: format_for_bagger_frozen
+def test_format_for_bagger_frozen(frozen_item: Item) -> None:
     '''
-    Test format_for_bagger with frozen flag only.
+    Test format_for_bagger with frozen flag.
+
+    :param frozen_item: A frozen Item instance.
+    :type frozen_item: Item
     '''
 
-    # Create a frozen item.
-    item = Item(name='Peas', size='medium', is_frozen=True)
+    result = frozen_item.format_for_bagger()
 
-    # Assert the formatted string includes frozen annotation.
-    assert item.format_for_bagger() == '1x Peas (frozen) [medium]'
+    assert result == '1x Ice Cream (frozen) [medium]'
 
 
-# ** test: item_format_for_bagger_both_flags
-def test_item_format_for_bagger_both_flags(full_item: Item) -> None:
+# ** test: format_for_bagger_fragile
+def test_format_for_bagger_fragile(fragile_item: Item) -> None:
+    '''
+    Test format_for_bagger with fragile flag.
+
+    :param fragile_item: A fragile Item instance.
+    :type fragile_item: Item
+    '''
+
+    result = fragile_item.format_for_bagger()
+
+    assert result == '1x Eggs (fragile) [small]'
+
+
+# ** test: format_for_bagger_both_flags
+def test_format_for_bagger_both_flags() -> None:
     '''
     Test format_for_bagger with both frozen and fragile flags.
-
-    :param full_item: Item fixture with all fields.
-    :type full_item: Item
     '''
 
-    # Assert the formatted string includes both annotations.
-    assert full_item.format_for_bagger() == '3x Ice Cream (frozen, fragile) [large]'
+    item = Item(name='Gelato', size='small', is_frozen=True, is_fragile=True, quantity=2)
+    result = item.format_for_bagger()
+
+    assert result == '2x Gelato (frozen, fragile) [small]'
