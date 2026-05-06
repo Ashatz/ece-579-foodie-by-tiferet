@@ -50,7 +50,7 @@ Returns a human-readable string for the backward-chaining simulation trace.
 
 **Example output:**
 ```
-Selected Carrot Juice (FreshRoots) [juice] (health-friendly, avoids: citrus)
+Selected Carrot Juice (FreshRoots) [juice] (health-friendly, avoids:citrus)
 Selected Corona (Corona) [beer]
 ```
 
