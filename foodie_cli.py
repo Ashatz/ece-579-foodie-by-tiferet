@@ -18,19 +18,16 @@ Usage:
 # *** imports
 
 # ** infra
-from tiferet import App
+from tiferet.builders.cli import CliBuilder
 
 # *** main
 
-# Create new app instance.
-app = App()
+# Create new CLI app instance.
+cli = CliBuilder()
 
 # Load configuration.
-app.load_app_service(app_yaml_file='config.yml')
-
-# Load the CLI interface.
-cli = app.load_interface('foodie_cli')
+cli.load_app_service(app_yaml_file='config.yml')
 
 # Run the CLI app.
 if __name__ == '__main__':
-    cli.run()
+    cli.run('foodie')
