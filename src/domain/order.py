@@ -32,6 +32,12 @@ class Order(DomainObject):
     # * attribute: order_id
     order_id: str = Field(..., description='Unique order identifier')
 
+    # * attribute: order_type
+    order_type: Literal['item', 'beverage'] = Field(
+        default='item',
+        description='Order type: item orders go through bagging, beverage orders through selection',
+    )
+
     # * attribute: items
     items: List[Item] = Field(default_factory=list, description='List of food items in this order')
 

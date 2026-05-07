@@ -33,9 +33,9 @@ class Bag(DomainObject):
     bag_id: str = Field(..., description='Unique bag identifier (e.g., bag_1, freezer_bag_2)')
 
     # * attribute: bag_type
-    bag_type: Literal['paper', 'freezer'] = Field(
+    bag_type: Literal['paper', 'freezer', 'beverage'] = Field(
         default='paper',
-        description='Paper for normal items, freezer for frozen items',
+        description='Paper for normal items, freezer for frozen, beverage for drink orders',
     )
 
     # * attribute: items
