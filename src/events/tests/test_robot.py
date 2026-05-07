@@ -16,10 +16,15 @@ from tiferet.assets.exceptions import TiferetError
 from ...domain import Item, Location, Order
 from ...interfaces.order import OrderService
 from ...interfaces.robot import RobotService
+from ...interfaces.location import LocationService
 from ...interfaces.bagging import BaggingService
+from ...interfaces.route_planner import RoutePlannerService
 from ...mappers.robot import RobotAggregate
 from ...mappers.bag import BagAggregate
-from ..robot import BagOrder
+from ..robot import (
+    BagOrder, PlanRoute, DeliverOrder,
+    ReturnToWarehouse, ChargeRobot, DispatchFleet,
+)
 
 # *** constants
 
@@ -235,3 +240,423 @@ def test_bag_order_robot_not_found(dependencies, mock_robot_service):
         )
 
     assert exc_info.value.error_code == 'ROBOT_NOT_FOUND'
+
+
+# ** constant: building_a
+BUILDING_A = Location(name='Building_A', x=5.0, y=8.0)
+
+
+# *** route event fixtures
+
+# ** fixture: mock_location_service
+@pytest.fixture
+def mock_location_service() -> LocationService:
+    '''
+    Mock LocationService returning FW and Building_A.
+    '''
+    svc = mock.Mock(spec=LocationService)
+    svc.list.return_value = [FOOD_WAREHOUSE, BUILDING_A]
+    svc.get_edges.return_value = {
+        'FW': ['Building_A'],
+        'Building_A': ['FW'],
+    }
+    return svc
+
+# ** fixture: mock_route_planner
+@pytest.fixture
+def mock_route_planner() -> RoutePlannerService:
+    '''
+    Mock RoutePlannerService returning a simple path.
+    '''
+    svc = mock.Mock(spec=RoutePlannerService)
+    svc.find_path.return_value = (['FW', 'Building_A'], 13.0)
+    svc.detect_and_replan.return_value = (None, 0.0, set())
+    return svc
+
+# ** fixture: loaded_robot
+@pytest.fixture
+def loaded_robot(sample_bags) -> RobotAggregate:
+    '''
+    A robot at FW with bags loaded.
+    '''
+    robot = RobotAggregate(robot_id='R1', current_location=FOOD_WAREHOUSE)
+    for bag in sample_bags:
+        robot.load_bag(bag)
+    return robot
+
+# ** fixture: route_deps
+@pytest.fixture
+def route_deps(
+    mock_robot_service,
+    mock_order_service,
+    mock_route_planner,
+    mock_location_service,
+) -> dict:
+    '''
+    Dependency dict for route-planning events.
+    '''
+    return {
+        'robot_service': mock_robot_service,
+        'order_service': mock_order_service,
+        'route_planner': mock_route_planner,
+        'location_service': mock_location_service,
+    }
+
+
+# *** plan_route tests
+
+# ** test: plan_route_success
+def test_plan_route_success(route_deps, mock_robot_service, loaded_robot, mock_route_planner):
+    '''
+    Test successful A* route planning for a loaded robot.
+    '''
+
+    # Set up the robot with bags.
+    mock_robot_service.get.return_value = loaded_robot
+
+    # Execute the event.
+    result = DomainEvent.handle(
+        PlanRoute,
+        dependencies=route_deps,
+        robot_id='R1',
+        order_id='ORD-101',
+    )
+
+    # Verify the return summary.
+    assert result['status'] == 'complete'
+    assert result['path'] == ['FW', 'Building_A']
+    assert result['distance'] == 13.0
+
+    # Verify robot was saved with updated status.
+    mock_robot_service.save.assert_called_once()
+
+
+# ** test: plan_route_no_bags
+def test_plan_route_no_bags(route_deps, mock_robot_service):
+    '''
+    Test that a robot with no bags raises ROBOT_NO_BAGS.
+    '''
+
+    # Robot at FW but no bags.
+    mock_robot_service.get.return_value = RobotAggregate(
+        robot_id='R1', current_location=FOOD_WAREHOUSE,
+    )
+
+    with pytest.raises(TiferetError) as exc_info:
+        DomainEvent.handle(
+            PlanRoute,
+            dependencies=route_deps,
+            robot_id='R1',
+            order_id='ORD-101',
+        )
+
+    assert exc_info.value.error_code == 'ROBOT_NO_BAGS'
+
+
+# ** test: plan_route_no_path
+def test_plan_route_no_path(route_deps, mock_robot_service, loaded_robot, mock_route_planner):
+    '''
+    Test that no_path status is returned when A* finds no route.
+    '''
+
+    mock_robot_service.get.return_value = loaded_robot
+    mock_route_planner.find_path.return_value = (None, 0.0)
+
+    result = DomainEvent.handle(
+        PlanRoute,
+        dependencies=route_deps,
+        robot_id='R1',
+        order_id='ORD-101',
+    )
+
+    assert result['status'] == 'no_path'
+    assert result['path'] is None
+
+
+# *** deliver_order tests
+
+# ** test: deliver_order_success
+def test_deliver_order_success(mock_robot_service, mock_order_service, sample_bags):
+    '''
+    Test successful delivery at the destination.
+    '''
+
+    # Robot at Building_A with bags.
+    robot = RobotAggregate(robot_id='R1', current_location=BUILDING_A)
+    for bag in sample_bags:
+        robot.load_bag(bag)
+    mock_robot_service.get.return_value = robot
+
+    # Order destined for Building_A.
+    mock_order_service.get.return_value = Order(
+        order_id='ORD-101', destination='Building_A', status='bagged',
+    )
+
+    deps = {
+        'robot_service': mock_robot_service,
+        'order_service': mock_order_service,
+    }
+
+    result = DomainEvent.handle(
+        DeliverOrder,
+        dependencies=deps,
+        robot_id='R1',
+        order_id='ORD-101',
+    )
+
+    assert result['status'] == 'complete'
+    assert result['bags_delivered'] == 2
+
+    # Verify order updated to delivered.
+    saved_order = mock_order_service.save.call_args.args[0]
+    assert saved_order.status == 'delivered'
+
+
+# ** test: deliver_order_not_at_destination
+def test_deliver_order_not_at_destination(mock_robot_service, mock_order_service):
+    '''
+    Test that a robot not at the destination raises ROBOT_NOT_AT_DESTINATION.
+    '''
+
+    # Robot at FW, not at destination.
+    robot = RobotAggregate(robot_id='R1', current_location=FOOD_WAREHOUSE)
+    robot.compartments = [BagAggregate(bag_id='bag_1', bag_type='paper')]
+    mock_robot_service.get.return_value = robot
+
+    mock_order_service.get.return_value = Order(
+        order_id='ORD-101', destination='Building_A', status='bagged',
+    )
+
+    deps = {
+        'robot_service': mock_robot_service,
+        'order_service': mock_order_service,
+    }
+
+    with pytest.raises(TiferetError) as exc_info:
+        DomainEvent.handle(
+            DeliverOrder,
+            dependencies=deps,
+            robot_id='R1',
+            order_id='ORD-101',
+        )
+
+    assert exc_info.value.error_code == 'ROBOT_NOT_AT_DESTINATION'
+
+
+# ** test: deliver_order_no_bags
+def test_deliver_order_no_bags(mock_robot_service, mock_order_service):
+    '''
+    Test that a robot at destination but with no bags raises ROBOT_NO_BAGS.
+    '''
+
+    # Robot at Building_A, no bags.
+    mock_robot_service.get.return_value = RobotAggregate(
+        robot_id='R1', current_location=BUILDING_A,
+    )
+
+    mock_order_service.get.return_value = Order(
+        order_id='ORD-101', destination='Building_A', status='bagged',
+    )
+
+    deps = {
+        'robot_service': mock_robot_service,
+        'order_service': mock_order_service,
+    }
+
+    with pytest.raises(TiferetError) as exc_info:
+        DomainEvent.handle(
+            DeliverOrder,
+            dependencies=deps,
+            robot_id='R1',
+            order_id='ORD-101',
+        )
+
+    assert exc_info.value.error_code == 'ROBOT_NO_BAGS'
+
+
+# *** return_to_warehouse tests
+
+# ** test: return_to_warehouse_success
+def test_return_to_warehouse_success(
+    mock_robot_service, mock_route_planner, mock_location_service,
+):
+    '''
+    Test successful return to Food Warehouse.
+    '''
+
+    # Robot at Building_A.
+    mock_robot_service.get.return_value = RobotAggregate(
+        robot_id='R1', current_location=BUILDING_A,
+    )
+    mock_route_planner.find_path.return_value = (['Building_A', 'FW'], 13.0)
+
+    deps = {
+        'robot_service': mock_robot_service,
+        'route_planner': mock_route_planner,
+        'location_service': mock_location_service,
+    }
+
+    result = DomainEvent.handle(
+        ReturnToWarehouse,
+        dependencies=deps,
+        robot_id='R1',
+    )
+
+    assert result['status'] == 'complete'
+    assert result['path'] == ['Building_A', 'FW']
+    mock_robot_service.save.assert_called_once()
+
+
+# ** test: return_to_warehouse_already_at_fw
+def test_return_to_warehouse_already_at_fw(mock_robot_service, mock_route_planner, mock_location_service):
+    '''
+    Test that a robot already at FW raises ROBOT_ALREADY_AT_WAREHOUSE.
+    '''
+
+    # Robot already at FW.
+    mock_robot_service.get.return_value = RobotAggregate(
+        robot_id='R1', current_location=FOOD_WAREHOUSE,
+    )
+
+    deps = {
+        'robot_service': mock_robot_service,
+        'route_planner': mock_route_planner,
+        'location_service': mock_location_service,
+    }
+
+    with pytest.raises(TiferetError) as exc_info:
+        DomainEvent.handle(
+            ReturnToWarehouse,
+            dependencies=deps,
+            robot_id='R1',
+        )
+
+    assert exc_info.value.error_code == 'ROBOT_ALREADY_AT_WAREHOUSE'
+
+
+# *** charge_robot tests
+
+# ** test: charge_robot_success
+def test_charge_robot_success(mock_robot_service):
+    '''
+    Test successful charging at the Food Warehouse.
+    '''
+
+    # Robot at FW with low battery.
+    robot = RobotAggregate(
+        robot_id='R1', current_location=FOOD_WAREHOUSE, battery_level=45.0,
+    )
+    mock_robot_service.get.return_value = robot
+
+    deps = {'robot_service': mock_robot_service}
+
+    result = DomainEvent.handle(
+        ChargeRobot,
+        dependencies=deps,
+        robot_id='R1',
+    )
+
+    assert result['status'] == 'complete'
+    assert result['previous_battery'] == 45.0
+    assert result['battery_level'] == 100.0
+    mock_robot_service.save.assert_called_once()
+
+
+# ** test: charge_robot_not_at_warehouse
+def test_charge_robot_not_at_warehouse(mock_robot_service):
+    '''
+    Test that charging away from FW raises ROBOT_NOT_AT_WAREHOUSE.
+    '''
+
+    mock_robot_service.get.return_value = RobotAggregate(
+        robot_id='R1', current_location=BUILDING_A,
+    )
+
+    deps = {'robot_service': mock_robot_service}
+
+    with pytest.raises(TiferetError) as exc_info:
+        DomainEvent.handle(
+            ChargeRobot,
+            dependencies=deps,
+            robot_id='R1',
+        )
+
+    assert exc_info.value.error_code == 'ROBOT_NOT_AT_WAREHOUSE'
+
+
+# *** dispatch_fleet tests
+
+# ** test: dispatch_fleet_success
+def test_dispatch_fleet_success(
+    mock_robot_service, mock_order_service,
+    mock_route_planner, mock_location_service, sample_bags,
+):
+    '''
+    Test successful fleet dispatch with round-robin assignment.
+    '''
+
+    # Two robots with bags.
+    r1 = RobotAggregate(robot_id='R1', current_location=FOOD_WAREHOUSE)
+    r2 = RobotAggregate(robot_id='R2', current_location=FOOD_WAREHOUSE)
+    for bag in sample_bags:
+        r1.load_bag(bag)
+        r2.load_bag(bag)
+    mock_robot_service.list.return_value = [r1, r2]
+
+    # Two bagged orders.
+    mock_order_service.list.return_value = [
+        Order(order_id='ORD-101', destination='Building_A', status='bagged'),
+        Order(order_id='ORD-102', destination='Building_A', status='bagged'),
+    ]
+
+    deps = {
+        'robot_service': mock_robot_service,
+        'order_service': mock_order_service,
+        'route_planner': mock_route_planner,
+        'location_service': mock_location_service,
+    }
+
+    result = DomainEvent.handle(
+        DispatchFleet,
+        dependencies=deps,
+    )
+
+    assert result['status'] == 'complete'
+    assert result['routes_planned'] == 2
+    assert result['total_distance'] == 26.0  # 13.0 * 2
+
+    # Verify robot_service.save called for each robot.
+    assert mock_robot_service.save.call_count == 2
+
+
+# ** test: dispatch_fleet_robot_no_bags
+def test_dispatch_fleet_robot_no_bags(
+    mock_robot_service, mock_order_service,
+    mock_route_planner, mock_location_service,
+):
+    '''
+    Test that dispatch fails if an assigned robot has no bags.
+    '''
+
+    # Robot with no bags.
+    r1 = RobotAggregate(robot_id='R1', current_location=FOOD_WAREHOUSE)
+    mock_robot_service.list.return_value = [r1]
+
+    mock_order_service.list.return_value = [
+        Order(order_id='ORD-101', destination='Building_A', status='bagged'),
+    ]
+
+    deps = {
+        'robot_service': mock_robot_service,
+        'order_service': mock_order_service,
+        'route_planner': mock_route_planner,
+        'location_service': mock_location_service,
+    }
+
+    with pytest.raises(TiferetError) as exc_info:
+        DomainEvent.handle(
+            DispatchFleet,
+            dependencies=deps,
+        )
+
+    assert exc_info.value.error_code == 'ROBOT_NO_BAGS'
