@@ -32,6 +32,12 @@ services:
   select_beverage_evt:
     module_path: src.events.order
     class_name: SelectBeverage
+  place_item_order_evt:
+    module_path: src.events.order
+    class_name: PlaceItemOrder
+  place_beverage_order_evt:
+    module_path: src.events.order
+    class_name: PlaceBeverageOrder
   # --- Repositories ---
   order_service:
     module_path: src.repos.order
@@ -115,6 +121,18 @@ features:
         - service_id: dispatch_fleet_evt
           name: Dispatch fleet routes
   order:
+    new_item:
+      name: New Item Order
+      description: Create an item order from menu catalog items
+      commands:
+        - service_id: place_item_order_evt
+          name: Place a new item order
+    new_beverage:
+      name: New Beverage Order
+      description: Create a beverage order for downstream selection
+      commands:
+        - service_id: place_beverage_order_evt
+          name: Place a new beverage order
     select_beverage:
       name: Select Beverage
       description: Backward-chaining beverage selection for a guest (Goal C)
@@ -193,6 +211,34 @@ cli:
         description: Round-robin fleet dispatch with A* routing.
         args: []
     order:
+      new-item:
+        group_key: order
+        key: new-item
+        name: New Item Order Command
+        description: Create an item order from menu items.
+        args:
+          - name_or_flags:
+              - order_id
+            description: Unique order identifier.
+          - name_or_flags:
+              - destination
+            description: Delivery destination on campus.
+          - name_or_flags:
+              - --items
+            description: Items as name:quantity pairs (e.g. "loaf of bread:2").
+            nargs: '+'
+      new-beverage:
+        group_key: order
+        key: new-beverage
+        name: New Beverage Order Command
+        description: Create a beverage order.
+        args:
+          - name_or_flags:
+              - order_id
+            description: Unique order identifier.
+          - name_or_flags:
+              - destination
+            description: Delivery destination on campus.
       select-beverage:
         group_key: order
         key: select-beverage
@@ -251,3 +297,13 @@ errors:
     message:
       - lang: en_US
         text: 'Robot {robot_id} is already at the Food Warehouse'
+  ITEM_NOT_FOUND:
+    name: Item Not Found
+    message:
+      - lang: en_US
+        text: 'Item {item_name} not found in menu catalog'
+  DUPLICATE_ORDER:
+    name: Duplicate Order
+    message:
+      - lang: en_US
+        text: 'Order {order_id} already exists'
