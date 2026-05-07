@@ -44,13 +44,18 @@ pip install tiferet==2.0.0b1
 
 ## 5. Running the Simulation
 
-A single command runs all three goals with sample data:
+A single command runs the full demo — seeding, bagging, routing, delivery, and beverage selection:
 
 ```bash
 python foodie.py
 ```
 
-The script uses the Tiferet `AppBuilder` to first seed the SQLite database (`admin.seed_database`), then execute each goal as a configured feature (`admin.bag_order`, `admin.plan_route`, `admin.select_beverage`).
+The script uses the Tiferet `AppBuilder` to execute the complete robot lifecycle:
+1. **Setup** — `admin.seed_database` pre-seeds the SQLite database.
+2. **Goal B** — `robot.bag_order` bags an order onto Robot R1.
+3. **Goal A** — `robot.plan_route` routes R1 to the destination, `robot.deliver_order` delivers the bags, `robot.return_to_warehouse` returns R1, and `robot.charge_robot` charges it.
+4. **Goal C** — `order.select_beverage` selects beverages for two guest scenarios.
+5. **Goal A** — `robot.plan_route` dispatches R2 and R3 with beverage deliveries.
 
 ### CLI Interface
 
@@ -60,92 +65,116 @@ FOODIE also provides a command-line interface via `foodie_cli.py`:
 # Seed the database with demo data (orders + robots)
 python foodie_cli.py admin seed-database
 
-# Bag an order
-python foodie_cli.py admin bag-order ORD-101
+# Bag an order onto a robot (Goal B)
+python foodie_cli.py robot bag-order R1 ORD-101
 
-# Plan delivery routes
-python foodie_cli.py admin plan-route
+# Plan an A* route for a robot delivery (Goal A)
+python foodie_cli.py robot plan-route R1 ORD-101
 
-# Select a beverage (pass facts as key=value pairs)
-python foodie_cli.py admin select-beverage health_nut=True allergies_citrus=True guest_age=adult
+# Deliver bags at the destination
+python foodie_cli.py robot deliver-order R1 ORD-101
+
+# Return a robot to the Food Warehouse
+python foodie_cli.py robot return-to-warehouse R1
+
+# Charge a robot at the warehouse
+python foodie_cli.py robot charge-robot R1
+
+# Round-robin fleet dispatch (Goal A)
+python foodie_cli.py robot dispatch-fleet
+
+# Select a beverage (Goal C — pass facts as key=value pairs)
+python foodie_cli.py order select-beverage R2 ORD-102 --facts health_nut=True allergies_citrus=True guest_age=adult
 ```
 
 The CLI uses Tiferet's `CliBuilder` to parse arguments via `argparse` and dispatch to the same features defined in `config.yml`.
 
 ## 6. Expected Output
 
+Running `python foodie.py` produces output for each phase of the simulation.
+
 ### Database Seeding
 ```
-SeedDatabase: Pre-seeding SQLite database with demo data...
-
-  Seeded order ORD-101 -> Building_A (4 items)
-  Seeded order ORD-102 -> Building_B (0 items)
-  Seeded order ORD-103 -> Dorm_1 (0 items)
-
-  Seeded robot R1 at FW
-  Seeded robot R2 at FW
-  Seeded robot R3 at FW
-
-SeedDatabase complete: 3 orders, 3 robots.
+======================================================================
+SETUP — Seeding Database
+======================================================================
+  Seeded order: ORD-101 -> Building_A (4 items)
+  Seeded order: ORD-102 -> Building_B (0 items)
+  Seeded order: ORD-103 -> Dorm_1 (0 items)
+  Seeded robot: R1 at FW
+  Seeded robot: R2 at FW
+  Seeded robot: R3 at FW
 ```
 
-### Goal B – FOODIE_BAGGER
+### Goal B – FOODIE_BAGGER (Forward Chaining)
 ```
-FOODIE_BAGGER forward-chaining production system started...
-Rule R1 says:   Bag large items.
-Rule R2 says:   Put 1-gallon water bottle in bag_1.
-Rule R3 says:   Put 1-gallon water bottle in bag_1.
-Rule R4 says:   Bag medium items.
-Rule R5 says:   Put pint ice cream in a freezer bag.
-Rule R6 says:   Start a new bag (fragile item).
-Rule R7 says:   Put granola box in bag_3.
-Rule R8 says:   Put loaf of bread in bag_4.
+======================================================================
+GOAL B — FOODIE_BAGGER: Forward-Chaining Bagging
+======================================================================
 
-Bagging complete.
-  Bag bag_1 (paper) contains: 1x 1-gallon water bottle, 1x 1-gallon water bottle (2/10)
-  Bag freezer_bag_2 (freezer) contains: 1x pint ice cream (1/10)
-  Bag bag_3 (paper) contains: 1x granola box (1/10)
-  Bag bag_4 (paper) contains: 1x loaf of bread (1/10)
-```
+  Bagging Order ORD-101 -> Building_A | Items: ... (total: 5)
+  Assigned to Robot R1
+  FOODIE_BAGGER forward-chaining production system started...
+  Rule R1 says: ...
+  ...
+  Bagging complete.
 
-### Goal A – Route Optimization
-```
-RoutePlannerContext: A* search + multi-robot replanning started...
-Fleet: 3 robots | Orders: 3 | Locations: 10
-
---- Order ORD-101: FW -> Building_A (Robot R1) ---
-  Path: FW -> Pathway_1 -> Pathway_2 -> Pathway_3 -> Pathway_6 -> Building_A (distance: 13.0)
-  Obstacle detected on Pathway_3 -> Pathway_6! Replanning with A*...
-  New path found (heuristic h(n) = Manhattan + obstacle penalty).
-  Replanned: FW -> Pathway_1 -> Pathway_2 -> ... -> Building_A (distance: 17.0)
-
-=== Current Fleet Status ===
-  Robot R1 | Loc: FW (Food Warehouse) @ (0.0, 0.0) | Battery: 98.0% | Status: en_route
-  Robot R2 | Loc: FW (Food Warehouse) @ (0.0, 0.0) | Battery: 98.2% | Status: en_route
-  Robot R3 | Loc: FW (Food Warehouse) @ (0.0, 0.0) | Battery: 99.4% | Status: en_route
+  4 bag(s) packed and loaded onto Robot R1:
+    Bag bag_1 (paper) contains: ... (2/10)
+    Bag freezer_bag_2 (freezer) contains: ... (1/10)
+    ...
 ```
 
-### Goal C – FOODIE_SPA
+### Goal A – Route Planning, Delivery, Return, Charge
 ```
-FOODIE_SPA backward-chaining inference started...
-Known facts: {'health_nut': True, 'allergies_citrus': True, 'guest_age': 'adult'}
+======================================================================
+GOAL A — Route Planning: A* Search
+======================================================================
 
-Trying to establish CHOOSE Carrot Juice using rule R9
-  Trying to establish JUICE is indicated using rule R8
-    Fact "health_nut" = True. OK.
-  Rule R8 establishes JUICE is indicated.
-  Fact "allergies_citrus" = True. OK.
-Rule R9 establishes CHOOSE Carrot Juice.
+  Planning route: Robot R1 from FW to Building_A
+  Replanned route: FW -> ... -> Building_A (dist: 17.0)
+  Route: FW -> ... -> Building_A (dist: 17.0)
+  Robot R1 battery: 96.6%
 
-CHOOSE Carrot Juice is True.
-Selected Carrot Juice (FreshRoots) [juice] (health-friendly, avoids:citrus)
-Backward chaining successful -> beverage selected.
+  --- Delivering Order ---
+  Robot R1 delivered 4 bag(s) for ORD-101 at Building_A
+
+  --- Returning to Warehouse ---
+  Robot R1 returning from Building_A to FW
+  Route: Building_A -> ... -> FW (dist: 17.0)
+  Robot R1 returned to FW, battery: 93.2%
+
+  --- Charging Robot ---
+  Robot R1 charged: 93.2% -> 100.0%
+```
+
+### Goal C – FOODIE_SPA (Backward Chaining)
+```
+======================================================================
+GOAL C — FOODIE_SPA: Backward-Chaining Beverage Selection
+======================================================================
+
+  --- Scenario 1: Health-Conscious Guest ---
+  Selecting beverage for order ORD-102 (Robot R2)
+  Guest facts: {'health_nut': True, 'allergies_citrus': True, 'guest_age': 'adult'}
+  FOODIE_SPA backward-chaining inference started...
+  ...
+  Selected: Carrot Juice (FreshRoots) [juice] (health-friendly, avoids:citrus)
+  Beverage bag loaded onto Robot R2
+
+  --- Scenario 2: Casual Outdoor Gathering ---
+  Selecting beverage for order ORD-103 (Robot R3)
+  Guest facts: {'occasion': 'casual', 'guest_age': 'adult', 'setting': 'outdoor'}
+  FOODIE_SPA backward-chaining inference started...
+  ...
+  Selected: Corona (Corona) [beer] (avoids:none)
+  Beverage bag loaded onto Robot R3
 ```
 
 ## 7. Project Structure
 
 ```
-foodie.py                  # Main demo script (runs all 3 goals via AppBuilder)
+foodie.py                  # Main demo script (runs full lifecycle via AppBuilder)
 foodie_cli.py              # CLI entry point (CliBuilder + argparse)
 config.yml                 # Unified Tiferet v2 configuration
 menu.yml                   # Item & beverage data (YAML)
@@ -157,8 +186,8 @@ src/
 ├── __init__.py            # Package exports
 ├── domain/                # Pydantic domain models (Tiferet DomainObject)
 │   ├── item.py            # Food item (name, size, frozen, fragile, quantity)
-│   ├── bag.py             # Bag (paper/freezer, capacity rules, items list)
-│   ├── order.py           # Customer order (items, destination, status)
+│   ├── bag.py             # Bag (paper/freezer/beverage, capacity rules, items list)
+│   ├── order.py           # Customer order (items, destination, status, order type)
 │   ├── location.py        # Campus graph node (coordinates, warehouse flag)
 │   ├── robot.py           # Delivery robot (battery, compartments, status)
 │   └── beverage.py        # Beverage (type, brand, health/allergy attributes)
@@ -189,11 +218,12 @@ src/
 │   ├── backward_chain_selector.py  # BackwardChainSelector (Goal C)
 │   ├── bagger.py          # ForwardChainBagger (Goal B)
 │   └── route_planner.py   # AStarRoutePlanner (Goal A)
-└── events/                # Domain events (Tiferet DomainEvent)
-    ├── seed_database.py   # Pre-seed SQLite with demo orders and robots
-    ├── bag_order.py       # Goal B: forward-chaining FOODIE_BAGGER
-    ├── plan_route.py      # Goal A: A* route planning with replanning
-    └── select_beverage.py # Goal C: backward-chaining FOODIE_SPA
+├── events/                # Domain events (Tiferet DomainEvent) — 8 events
+│   ├── migrate.py         # SeedDatabase (database seeding)
+│   ├── robot.py           # BagOrder, PlanRoute, DeliverOrder, ReturnToWarehouse, ChargeRobot, DispatchFleet
+│   └── order.py           # SelectBeverage (backward-chaining inference)
+└── assets/                # Constants and rule bases
+    └── beverage.py        # BEVERAGE_RULES (15 rules), FALLBACK_BEVERAGE
 ```
 
 ## 8. Architecture
@@ -202,7 +232,8 @@ FOODIE follows the **Tiferet** framework's Domain-Driven Design architecture:
 
 - **Configuration** (`config.yml`) – Unified Tiferet v2 configuration defining interfaces, DI services, features, CLI commands, and errors. The `AppBuilder` and `CliBuilder` load this file to bootstrap the application.
 - **Domain Models** (`src/domain/`) – Pydantic v2 models extending `DomainObject`. Each model uses `Field(...)` for validation, `Literal` for constrained choices, and `List[T]` for nested collections.
-- **Domain Events** (`src/events/`) – Operation classes extending `DomainEvent`. Each event receives dependencies via constructor injection and exposes an `execute(**kwargs)` method. Events are resolved from `config.yml` services via Tiferet's DI container. The `SeedDatabase` event pre-seeds the SQLite database with demo orders and robots before the simulation begins.
+- **Domain Events** (`src/events/`) – 8 operation classes extending `DomainEvent` across 3 modules. Each event receives dependencies via constructor injection and exposes an `execute(**kwargs)` method. Events are resolved from `config.yml` services via Tiferet's DI container. The robot module (`robot.py`) contains 6 events modeling the complete delivery lifecycle: bag → route → deliver → return → charge, plus fleet dispatch. The order module (`order.py`) handles beverage selection via backward chaining. The migrate module (`migrate.py`) provides idempotent database seeding.
+- **Assets** (`src/assets/`) – Hard-coded constants and rule bases. `beverage.py` provides the 15-rule backward-chaining knowledge base (`BEVERAGE_RULES`) and fallback beverage data (`FALLBACK_BEVERAGE`).
 - **Service Interfaces** (`src/interfaces/`) – Abstract service contracts extending `Service`. Eight interfaces: 5 data-access contracts (`ItemService`, `BeverageService`, `LocationService`, `OrderService`, `RobotService`) defining CRUD operations for domain persistence, plus 3 utility-associated contracts (`BaggingService`, `RoutePlannerService`, `BeverageSelectService`) defining computational APIs.
 - **Mappers** (`src/mappers/`) – Aggregates provide validated mutation methods (e.g., `update_status`, `update_battery`); TransferObjects provide role-based serialization for persistence. Three patterns exist: flat YAML-backed mappers (`ItemYamlObject`, `LocationYamlObject`, `BeverageYamlObject`), an aggregate-only mapper (`BagAggregate` with static factories), and SQL-backed mappers with custom JSON serialization (`OrderSqlObject` with one JSON column, `RobotSqlObject` with two).
 - **Repositories** (`src/repos/`) – Concrete service implementations with two persistence backends. YAML-backed: `ItemYamlRepository`, `BeverageYamlRepository`, `LocationYamlRepository` for universal/config data (`menu.yml`, `campus.yml`). SQLite-backed: `OrderSqliteRepository`, `RobotSqliteRepository` for instance-specific runtime data (`foodie.db`).
@@ -318,19 +349,25 @@ Guide documents for each layer of the FOODIE codebase are available in `docs/gui
 
 ## 11. Running Tests
 
+The full test suite covers all layers: domain models, mappers, repositories, utilities, and domain events (186 tests total).
+
 ```bash
 # Activate virtual environment
 source .venv/bin/activate
 
-# Run all tests
+# Run all tests (186 tests)
 pytest src/
 
-# Run repository tests only
-pytest src/repos/
+# Run tests by layer
+pytest src/domain/       # Domain model tests
+pytest src/mappers/      # Mapper tests
+pytest src/repos/        # Repository tests
+pytest src/utils/        # Utility tests
+pytest src/events/       # Domain event tests
 
-# Run specific repository test suite
+# Run a specific test file
 pytest src/repos/tests/test_item.py
-pytest src/repos/tests/test_order.py
+pytest src/events/tests/test_robot.py
 ```
 
 ## 12. Submission Files

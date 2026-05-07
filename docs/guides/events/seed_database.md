@@ -83,9 +83,9 @@ features:
   admin:
     seed_database:
       name: Seed Database
-      description: Pre-seed the database with demo orders and robots
+      description: Pre-seed SQLite database with demo orders and robots
       commands:
-        - attribute_id: seed_database_evt
+        - service_id: seed_database_evt
           name: Seed demo data
 ```
 
