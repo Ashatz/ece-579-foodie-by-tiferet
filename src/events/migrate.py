@@ -95,36 +95,8 @@ class SeedDatabase(DomainEvent):
         for robot in existing_robots:
             self.robot_service.delete(robot.robot_id)
 
-        # Load menu items from the catalog.
-        items = self.item_service.list()
-
         # Load the Food Warehouse location.
         food_warehouse = self.location_service.get('FW')
-
-        # Seed 3 orders.
-        orders = [
-            OrderAggregate(
-                order_id='ORD-101',
-                destination='Building_A',
-                items=list(items),
-            ),
-            OrderAggregate(
-                order_id='ORD-102',
-                order_type='beverage',
-                destination='Building_B',
-                items=[],
-            ),
-            OrderAggregate(
-                order_id='ORD-103',
-                order_type='beverage',
-                destination='Dorm_1',
-                items=[],
-            ),
-        ]
-
-        for order in orders:
-            self.order_service.save(order)
-            print(f'  Seeded order: {order.order_id} -> {order.destination} ({len(order.items)} items)')
 
         # Seed 3 robots at the Food Warehouse.
         robots = [
@@ -148,7 +120,6 @@ class SeedDatabase(DomainEvent):
 
         # Return the seeding summary.
         return {
-            'orders_seeded': len(orders),
             'robots_seeded': len(robots),
             'status': 'complete',
         }

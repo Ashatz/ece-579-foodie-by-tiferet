@@ -21,10 +21,10 @@ menu.yml               # Item catalog + beverage knowledge base (YAML)
 campus.yml             # Campus terrain: locations + edge graph (YAML)
 src/
 ├── domain/            # Pydantic v2 domain models (Item, Bag, Order, Location, Robot, Beverage)
-├── events/            # Domain events — 8 events across 3 modules
+├── events/            # Domain events — 10 events across 3 modules
 │   ├── migrate.py     # SeedDatabase (database seeding)
 │   ├── robot.py       # BagOrder, PlanRoute, DeliverOrder, ReturnToWarehouse, ChargeRobot, DispatchFleet
-│   └── order.py       # SelectBeverage (backward-chaining inference)
+│   └── order.py       # PlaceItemOrder, PlaceBeverageOrder, SelectBeverage
 ├── interfaces/        # Service ABCs — 5 data-access + 3 utility contracts
 ├── mappers/           # Aggregates + TransferObjects (item, bag, beverage, location, order, robot)
 ├── repos/             # YAML-backed (Item, Beverage, Location) and SQLite-backed (Order, Robot) repositories
@@ -60,19 +60,23 @@ Features are grouped into three domains:
 - `robot.dispatch_fleet` — Round-robin fleet dispatch with A* routing (Goal A).
 
 **order** — Order-level operations:
+- `order.new_item` — Create an item order from menu catalog items.
+- `order.new_beverage` — Create a beverage order for downstream selection.
 - `order.select_beverage` — Backward-chaining beverage selection (Goal C).
 
 ### Domain Events
 
-8 domain events organized by responsibility:
+10 domain events organized by responsibility:
 
-- **`SeedDatabase`** (`src/events/migrate.py`) — Idempotent database seeding. Injects `OrderService`, `RobotService`, `ItemService`, `LocationService`.
+- **`SeedDatabase`** (`src/events/migrate.py`) — Idempotent database seeding (robots only). Injects `OrderService`, `RobotService`, `ItemService`, `LocationService`.
 - **`BagOrder`** (`src/events/robot.py`) — Robot-centric bagging (Goal B). Injects `OrderService`, `RobotService`, `BaggingService`.
 - **`PlanRoute`** (`src/events/robot.py`) — A* routing to order destination (Goal A). Injects `RobotService`, `OrderService`, `RoutePlannerService`, `LocationService`.
 - **`DeliverOrder`** (`src/events/robot.py`) — Deliver bags at destination. Injects `RobotService`, `OrderService`.
 - **`ReturnToWarehouse`** (`src/events/robot.py`) — Route back to FW. Injects `RobotService`, `RoutePlannerService`, `LocationService`.
 - **`ChargeRobot`** (`src/events/robot.py`) — Charge battery at FW. Injects `RobotService`.
 - **`DispatchFleet`** (`src/events/robot.py`) — Fleet-level round-robin dispatch (Goal A). Injects `RobotService`, `OrderService`, `RoutePlannerService`, `LocationService`.
+- **`PlaceItemOrder`** (`src/events/order.py`) — Create item orders from menu catalog. Injects `OrderService`, `ItemService`.
+- **`PlaceBeverageOrder`** (`src/events/order.py`) — Create beverage orders. Injects `OrderService`.
 - **`SelectBeverage`** (`src/events/order.py`) — Backward-chaining beverage selection (Goal C). Injects `OrderService`, `RobotService`, `BeverageService`, `BeverageSelectService`.
 
 All events extend `DomainEvent` from `tiferet.events`, use `@DomainEvent.parameters_required([...])` for input validation, and `self.verify()` for domain rules.
@@ -112,7 +116,7 @@ Single `config.yml` at project root with sections:
 - `services` — DI container entries (events, repos, utils).
 - `features` — Feature workflows grouped by domain (`admin`, `robot`, `order`).
 - `cli` — CLI command definitions with argparse arguments.
-- `errors` — Application-specific error definitions (7 error codes).
+- `errors` — Application-specific error definitions (9 error codes).
 
 ## Data Files
 
@@ -172,7 +176,8 @@ Guide documents are in `docs/guides/`:
 
 ### Domain Event Guides (`docs/guides/events/`)
 
-- `seed_database.md` — SeedDatabase (idempotent database seeding with demo orders and robots).
+- `seed_database.md` — SeedDatabase (idempotent database seeding, robots only).
+- `place_order.md` — PlaceItemOrder and PlaceBeverageOrder (order creation from menu catalog).
 - `bag_order.md` — BagOrder (robot-centric bagging with forward-chaining delegation; Goal B).
 - `plan_route.md` — Robot Lifecycle Events: PlanRoute, DeliverOrder, ReturnToWarehouse, ChargeRobot, DispatchFleet (Goal A).
 - `select_beverage.md` — SelectBeverage (backward-chaining inference with order-type separation; Goal C).
@@ -185,7 +190,7 @@ Guide documents are in `docs/guides/`:
 - **Repository tests:** `src/repos/tests/`
 - **Utility tests:** `src/utils/tests/`
 - **Event tests:** `src/events/tests/`
-- **Total:** 186 tests
+- **Total:** 190 tests
 - **Run all:** `pytest src/` from project root (with venv activated).
 - **Run by layer:**
   - `pytest src/domain/` — domain model tests

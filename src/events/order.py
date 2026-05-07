@@ -1,8 +1,7 @@
-"""
-FOODIE Order Domain Events
+"""FOODIE Order Domain Events
 
-Domain events that orchestrate order operations: beverage selection
-via backward chaining and order-type management.
+Domain events that orchestrate order operations: order placement,
+beverage selection via backward chaining, and order-type management.
 """
 
 # *** imports
@@ -14,15 +13,200 @@ from typing import Any, Dict, List
 from tiferet.events import DomainEvent
 
 # ** app
+from ..domain import Item
 from ..interfaces.order import OrderService
+from ..interfaces.item import ItemService
 from ..interfaces.robot import RobotService
 from ..interfaces.beverage import BeverageService
 from ..interfaces.beverage_select import BeverageSelectService
+from ..mappers.order import OrderAggregate
 from ..mappers.beverage import BeverageAggregate
 from ..mappers.bag import BagAggregate
 from ..assets.beverage import BEVERAGE_RULES, FALLBACK_BEVERAGE
 
 # *** events
+
+# ** event: place_item_order
+class PlaceItemOrder(DomainEvent):
+    '''
+    Create a new item order from menu catalog items.
+
+    Looks up each requested item by name from the menu catalog,
+    builds an Order with order_type='item', and persists it.
+    '''
+
+    # * attribute: order_service
+    order_service: OrderService
+
+    # * attribute: item_service
+    item_service: ItemService
+
+    # * init
+    def __init__(self,
+            order_service: OrderService,
+            item_service: ItemService,
+        ):
+        '''
+        Initialize the PlaceItemOrder event.
+
+        :param order_service: Service for persisting orders.
+        :type order_service: OrderService
+        :param item_service: Service for looking up menu catalog items.
+        :type item_service: ItemService
+        '''
+
+        # Set the service dependencies.
+        self.order_service = order_service
+        self.item_service = item_service
+
+    # * method: execute
+    @DomainEvent.parameters_required(['order_id', 'destination', 'items'])
+    def execute(self,
+            order_id: str,
+            destination: str,
+            items: list,
+            **kwargs,
+        ) -> Dict[str, Any]:
+        '''
+        Place a new item order.
+
+        :param order_id: Unique order identifier.
+        :type order_id: str
+        :param destination: Delivery destination on campus.
+        :type destination: str
+        :param items: List of dicts with 'name' and optional 'quantity'.
+        :type items: list
+        :param kwargs: Additional keyword arguments.
+        :type kwargs: dict
+        :return: Summary dict with order details.
+        :rtype: Dict[str, Any]
+        '''
+
+        # Verify no duplicate order exists.
+        self.verify(
+            expression=not self.order_service.exists(order_id),
+            error_code='DUPLICATE_ORDER',
+            order_id=order_id,
+        )
+
+        # Resolve each item from the menu catalog.
+        resolved_items = []
+        for entry in items:
+            name = entry.get('name') if isinstance(entry, dict) else entry
+            quantity = entry.get('quantity', 1) if isinstance(entry, dict) else 1
+
+            # Look up the item in the catalog.
+            catalog_item = self.item_service.get(name)
+
+            # Verify the item exists.
+            self.verify(
+                expression=catalog_item is not None,
+                error_code='ITEM_NOT_FOUND',
+                item_name=name,
+            )
+
+            # Build the item with the requested quantity.
+            resolved_items.append(Item(
+                name=catalog_item.name,
+                size=catalog_item.size,
+                is_frozen=catalog_item.is_frozen,
+                is_fragile=catalog_item.is_fragile,
+                quantity=quantity,
+            ))
+
+        # Create and persist the order.
+        order = OrderAggregate(
+            order_id=order_id,
+            order_type='item',
+            destination=destination,
+            items=resolved_items,
+        )
+        self.order_service.save(order)
+
+        # Print placement trace.
+        total = sum(i.quantity for i in resolved_items)
+        print(f'  Placed item order {order_id} -> {destination} ({total} items)')
+
+        # Return the summary.
+        return {
+            'order_id': order_id,
+            'destination': destination,
+            'total_items': total,
+            'status': 'complete',
+        }
+
+
+# ** event: place_beverage_order
+class PlaceBeverageOrder(DomainEvent):
+    '''
+    Create a new beverage order.
+
+    Creates a minimal Order with order_type='beverage' and no items,
+    ready for downstream SelectBeverage inference.
+    '''
+
+    # * attribute: order_service
+    order_service: OrderService
+
+    # * init
+    def __init__(self, order_service: OrderService):
+        '''
+        Initialize the PlaceBeverageOrder event.
+
+        :param order_service: Service for persisting orders.
+        :type order_service: OrderService
+        '''
+
+        # Set the service dependency.
+        self.order_service = order_service
+
+    # * method: execute
+    @DomainEvent.parameters_required(['order_id', 'destination'])
+    def execute(self,
+            order_id: str,
+            destination: str,
+            **kwargs,
+        ) -> Dict[str, Any]:
+        '''
+        Place a new beverage order.
+
+        :param order_id: Unique order identifier.
+        :type order_id: str
+        :param destination: Delivery destination on campus.
+        :type destination: str
+        :param kwargs: Additional keyword arguments.
+        :type kwargs: dict
+        :return: Summary dict with order details.
+        :rtype: Dict[str, Any]
+        '''
+
+        # Verify no duplicate order exists.
+        self.verify(
+            expression=not self.order_service.exists(order_id),
+            error_code='DUPLICATE_ORDER',
+            order_id=order_id,
+        )
+
+        # Create and persist the beverage order.
+        order = OrderAggregate(
+            order_id=order_id,
+            order_type='beverage',
+            destination=destination,
+            items=[],
+        )
+        self.order_service.save(order)
+
+        # Print placement trace.
+        print(f'  Placed beverage order {order_id} -> {destination}')
+
+        # Return the summary.
+        return {
+            'order_id': order_id,
+            'destination': destination,
+            'order_type': 'beverage',
+            'status': 'complete',
+        }
+
 
 # ** event: select_beverage
 class SelectBeverage(DomainEvent):

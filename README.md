@@ -51,19 +51,26 @@ python foodie.py
 ```
 
 The script uses the Tiferet `AppBuilder` to execute the complete robot lifecycle:
-1. **Setup** — `admin.seed_database` pre-seeds the SQLite database.
-2. **Goal B** — `robot.bag_order` bags an order onto Robot R1.
-3. **Goal A** — `robot.plan_route` routes R1 to the destination, `robot.deliver_order` delivers the bags, `robot.return_to_warehouse` returns R1, and `robot.charge_robot` charges it.
-4. **Goal C** — `order.select_beverage` selects beverages for two guest scenarios.
-5. **Goal A** — `robot.plan_route` dispatches R2 and R3 with beverage deliveries.
+1. **Setup** — `admin.seed_database` pre-seeds robots in the SQLite database.
+2. **Order Placement** — `order.new_item` places an item order from the menu catalog; `order.new_beverage` places beverage orders.
+3. **Goal B** — `robot.bag_order` bags an order onto Robot R1.
+4. **Goal A** — `robot.plan_route` routes R1 to the destination, `robot.deliver_order` delivers the bags, `robot.return_to_warehouse` returns R1, and `robot.charge_robot` charges it.
+5. **Goal C** — `order.select_beverage` selects beverages for two guest scenarios.
+6. **Goal A** — `robot.plan_route` dispatches R2 and R3 with beverage deliveries.
 
 ### CLI Interface
 
 FOODIE also provides a command-line interface via `foodie_cli.py`:
 
 ```bash
-# Seed the database with demo data (orders + robots)
+# Seed the database with robots
 python foodie_cli.py admin seed-database
+
+# Place an item order from the menu catalog
+python foodie_cli.py order new-item ORD-101 Building_A --items "loaf of bread:2" "pint ice cream:1"
+
+# Place a beverage order
+python foodie_cli.py order new-beverage BEV-201 Building_B
 
 # Bag an order onto a robot (Goal B)
 python foodie_cli.py robot bag-order R1 ORD-101
@@ -93,17 +100,21 @@ The CLI uses Tiferet's `CliBuilder` to parse arguments via `argparse` and dispat
 
 Running `python foodie.py` produces output for each phase of the simulation.
 
-### Database Seeding
+### Database Seeding & Order Placement
 ```
 ======================================================================
 SETUP — Seeding Database
 ======================================================================
-  Seeded order: ORD-101 -> Building_A (4 items)
-  Seeded order: ORD-102 -> Building_B (0 items)
-  Seeded order: ORD-103 -> Dorm_1 (0 items)
   Seeded robot: R1 at FW
   Seeded robot: R2 at FW
   Seeded robot: R3 at FW
+
+======================================================================
+ORDER PLACEMENT — Placing Orders
+======================================================================
+  Placed item order ORD-101 -> Building_A (5 items)
+  Placed beverage order ORD-102 -> Building_B
+  Placed beverage order ORD-103 -> Dorm_1
 ```
 
 ### Goal B – FOODIE_BAGGER (Forward Chaining)
@@ -218,10 +229,10 @@ src/
 │   ├── backward_chain_selector.py  # BackwardChainSelector (Goal C)
 │   ├── bagger.py          # ForwardChainBagger (Goal B)
 │   └── route_planner.py   # AStarRoutePlanner (Goal A)
-├── events/                # Domain events (Tiferet DomainEvent) — 8 events
+├── events/                # Domain events (Tiferet DomainEvent) — 10 events
 │   ├── migrate.py         # SeedDatabase (database seeding)
 │   ├── robot.py           # BagOrder, PlanRoute, DeliverOrder, ReturnToWarehouse, ChargeRobot, DispatchFleet
-│   └── order.py           # SelectBeverage (backward-chaining inference)
+│   └── order.py           # PlaceItemOrder, PlaceBeverageOrder, SelectBeverage
 └── assets/                # Constants and rule bases
     └── beverage.py        # BEVERAGE_RULES (15 rules), FALLBACK_BEVERAGE
 ```
@@ -232,7 +243,7 @@ FOODIE follows the **Tiferet** framework's Domain-Driven Design architecture:
 
 - **Configuration** (`config.yml`) – Unified Tiferet v2 configuration defining interfaces, DI services, features, CLI commands, and errors. The `AppBuilder` and `CliBuilder` load this file to bootstrap the application.
 - **Domain Models** (`src/domain/`) – Pydantic v2 models extending `DomainObject`. Each model uses `Field(...)` for validation, `Literal` for constrained choices, and `List[T]` for nested collections.
-- **Domain Events** (`src/events/`) – 8 operation classes extending `DomainEvent` across 3 modules. Each event receives dependencies via constructor injection and exposes an `execute(**kwargs)` method. Events are resolved from `config.yml` services via Tiferet's DI container. The robot module (`robot.py`) contains 6 events modeling the complete delivery lifecycle: bag → route → deliver → return → charge, plus fleet dispatch. The order module (`order.py`) handles beverage selection via backward chaining. The migrate module (`migrate.py`) provides idempotent database seeding.
+- **Domain Events** (`src/events/`) – 10 operation classes extending `DomainEvent` across 3 modules. Each event receives dependencies via constructor injection and exposes an `execute(**kwargs)` method. Events are resolved from `config.yml` services via Tiferet's DI container. The order module (`order.py`) handles order placement (`PlaceItemOrder`, `PlaceBeverageOrder`) and beverage selection via backward chaining (`SelectBeverage`). The robot module (`robot.py`) contains 6 events modeling the complete delivery lifecycle: bag → route → deliver → return → charge, plus fleet dispatch. The migrate module (`migrate.py`) provides idempotent robot seeding.
 - **Assets** (`src/assets/`) – Hard-coded constants and rule bases. `beverage.py` provides the 15-rule backward-chaining knowledge base (`BEVERAGE_RULES`) and fallback beverage data (`FALLBACK_BEVERAGE`).
 - **Service Interfaces** (`src/interfaces/`) – Abstract service contracts extending `Service`. Eight interfaces: 5 data-access contracts (`ItemService`, `BeverageService`, `LocationService`, `OrderService`, `RobotService`) defining CRUD operations for domain persistence, plus 3 utility-associated contracts (`BaggingService`, `RoutePlannerService`, `BeverageSelectService`) defining computational APIs.
 - **Mappers** (`src/mappers/`) – Aggregates provide validated mutation methods (e.g., `update_status`, `update_battery`); TransferObjects provide role-based serialization for persistence. Three patterns exist: flat YAML-backed mappers (`ItemYamlObject`, `LocationYamlObject`, `BeverageYamlObject`), an aggregate-only mapper (`BagAggregate` with static factories), and SQL-backed mappers with custom JSON serialization (`OrderSqlObject` with one JSON column, `RobotSqlObject` with two).
@@ -342,20 +353,21 @@ Guide documents for each layer of the FOODIE codebase are available in `docs/gui
 
 ### Domain Event Guides
 
-- [SeedDatabase](docs/guides/events/seed_database.md) — Idempotent database seeding with demo orders and robots
+- [SeedDatabase](docs/guides/events/seed_database.md) — Idempotent database seeding (robots only)
+- [PlaceItemOrder / PlaceBeverageOrder](docs/guides/events/place_order.md) — Order creation from menu catalog
 - [BagOrder](docs/guides/events/bag_order.md) — Order loading, item expansion, and forward-chaining delegation (Goal B)
 - [PlanRoute](docs/guides/events/plan_route.md) — Fleet orchestration, round-robin assignment, and A* delegation (Goal A)
 - [SelectBeverage](docs/guides/events/select_beverage.md) — Fact parsing, backward-chaining delegation, and fallback logic (Goal C)
 
 ## 11. Running Tests
 
-The full test suite covers all layers: domain models, mappers, repositories, utilities, and domain events (186 tests total).
+The full test suite covers all layers: domain models, mappers, repositories, utilities, and domain events (190 tests total).
 
 ```bash
 # Activate virtual environment
 source .venv/bin/activate
 
-# Run all tests (186 tests)
+# Run all tests (190 tests)
 pytest src/
 
 # Run tests by layer

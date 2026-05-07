@@ -108,12 +108,11 @@ def test_seed_database_success(dependencies, mock_order_service, mock_robot_serv
     )
 
     # Verify the return summary.
-    assert result['orders_seeded'] == 3
     assert result['robots_seeded'] == 3
     assert result['status'] == 'complete'
 
-    # Verify save calls.
-    assert mock_order_service.save.call_count == 3
+    # Verify save calls (robots only, no orders).
+    assert mock_order_service.save.call_count == 0
     assert mock_robot_service.save.call_count == 3
 
 
@@ -149,41 +148,6 @@ def test_seed_database_clears_existing(dependencies, mock_order_service, mock_ro
     mock_order_service.delete.assert_called_once_with('OLD-001')
     mock_robot_service.delete.assert_called_once_with('OLD-R1')
 
-    # Verify new data was still seeded.
-    assert mock_order_service.save.call_count == 3
+    # Verify new data was still seeded (robots only).
+    assert mock_order_service.save.call_count == 0
     assert mock_robot_service.save.call_count == 3
-
-
-# ** test: seed_database_first_order_has_items
-def test_seed_database_first_order_has_items(dependencies, mock_order_service):
-    '''
-    Test that ORD-101 contains all menu items while ORD-102 and ORD-103 are empty.
-
-    :param dependencies: The injected service dependencies.
-    :type dependencies: dict
-    :param mock_order_service: The mock order service.
-    :type mock_order_service: OrderService
-    '''
-
-    # Execute the event.
-    DomainEvent.handle(
-        SeedDatabase,
-        dependencies=dependencies,
-    )
-
-    # Extract the orders passed to save().
-    saved_orders = [call.args[0] for call in mock_order_service.save.call_args_list]
-
-    # ORD-101 should have all 4 menu items and be an item order.
-    assert saved_orders[0].order_id == 'ORD-101'
-    assert saved_orders[0].order_type == 'item'
-    assert len(saved_orders[0].items) == 4
-
-    # ORD-102 and ORD-103 should be empty beverage orders.
-    assert saved_orders[1].order_id == 'ORD-102'
-    assert saved_orders[1].order_type == 'beverage'
-    assert len(saved_orders[1].items) == 0
-
-    assert saved_orders[2].order_id == 'ORD-103'
-    assert saved_orders[2].order_type == 'beverage'
-    assert len(saved_orders[2].items) == 0

@@ -30,13 +30,43 @@ if __name__ == '__main__':
     app.load_app_service(app_yaml_file='config.yml')
 
     # ======================================================================
-    # SETUP — Seed Database
+    # SETUP — Seed Database (robots only)
     # ======================================================================
     print('=' * 70)
     print('SETUP — Seeding Database')
     print('=' * 70)
 
     app.run('foodie', 'admin.seed_database')
+
+    # ======================================================================
+    # ORDER PLACEMENT — Place Item and Beverage Orders
+    # ======================================================================
+    print('\n' + '=' * 70)
+    print('ORDER PLACEMENT — Placing Orders')
+    print('=' * 70)
+
+    # Place an item order with all menu items.
+    app.run('foodie', 'order.new_item', data=dict(
+        order_id='ORD-101',
+        destination='Building_A',
+        items=[
+            {'name': '1-gallon water bottle', 'quantity': 2},
+            {'name': 'pint ice cream', 'quantity': 1},
+            {'name': 'granola box', 'quantity': 1},
+            {'name': 'loaf of bread', 'quantity': 1},
+        ],
+    ))
+
+    # Place beverage orders.
+    app.run('foodie', 'order.new_beverage', data=dict(
+        order_id='ORD-102',
+        destination='Building_B',
+    ))
+
+    app.run('foodie', 'order.new_beverage', data=dict(
+        order_id='ORD-103',
+        destination='Dorm_1',
+    ))
 
     # ======================================================================
     # GOAL B — FOODIE_BAGGER (Forward Chaining)
