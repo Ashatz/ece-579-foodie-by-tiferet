@@ -5,7 +5,7 @@
 **FOODIE** (Food Intelligence Electrified) is an AI expert system for campus food-delivery robots, built on the **Tiferet** framework (v2.0.0b1, Pydantic v2). It implements three AI techniques: A* search, forward chaining, and backward chaining.
 
 - **Repository:** https://github.com/ashatz/ece-579-foodie-by-tiferet
-- **Branch:** `v1.0-proto`
+- **Branch:** `v1.0a4-release`
 - **Python:** ≥ 3.10
 - **Framework:** Tiferet 2.0.0b1
 
@@ -20,9 +20,9 @@ config.yml             # Unified Tiferet v2 config (interfaces, services, featur
 src/
 ├── domain/            # Pydantic v2 domain models (Item, Bag, Order, Location, Robot, Beverage)
 ├── events/            # Domain events (SeedDatabase, BagOrder, PlanRoute, SelectBeverage)
-├── interfaces/        # Service ABCs (BaggingService, BeverageService, LocationService, etc.)
+├── interfaces/        # Service ABCs — 5 data-access (ItemService, BeverageService, LocationService, OrderService, RobotService) + 3 utility (BaggingService, RoutePlannerService, BeverageSelectService)
 ├── mappers/           # Aggregates + TransferObjects (item, bag, beverage, location, order, robot)
-├── repos/             # YAML and SQLite repository implementations
+├── repos/             # YAML-backed (Item, Beverage, Location) and SQLite-backed (Order, Robot) repository implementations
 ├── utils/             # Computational utilities (AStarRoutePlanner, ForwardChainBagger, BackwardChainSelector)
 └── assets/            # Constants (beverage rules, fallback data)
 ```
@@ -104,11 +104,27 @@ Guide documents are in `docs/guides/`:
 - `robot.md` — Robot domain model (battery, compartments, energy simulation).
 - `beverage.md` — Beverage domain model (type, brand, health/allergy matching for backward chaining).
 
-### Interface Guides (`docs/guides/interfaces/`)
+### Data-Access Interface Guides (`docs/guides/interfaces/`)
+
+- `item.md` — ItemService (CRUD contract for menu catalog items; YAML-backed).
+- `beverage.md` — BeverageService (CRUD contract for beverage knowledge base; YAML-backed).
+- `location.md` — LocationService (CRUD + `get_edges()` for campus terrain; YAML-backed).
+- `order.md` — OrderService (CRUD contract for runtime orders; SQLite-backed).
+- `robot.md` — RobotService (CRUD contract for fleet state; SQLite-backed).
+
+### Utility Interface Guides (`docs/guides/interfaces/`)
 
 - `bagging.md` — BaggingService (forward-chaining bagging contract; Goal B).
 - `route_planner.md` — RoutePlannerService (A* route planning and replanning contract; Goal A).
 - `beverage_select.md` — BeverageSelectService (backward-chaining beverage selection contract; Goal C).
+
+### Repository Guides (`docs/guides/repos/`)
+
+- `item.md` — ItemYamlRepository (YAML-backed item persistence, `menu.yml`).
+- `beverage.md` — BeverageYamlRepository (YAML-backed beverage persistence, `menu.yml`).
+- `location.md` — LocationYamlRepository (YAML-backed location persistence, `campus.yml`).
+- `order.md` — OrderSqliteRepository (SQLite-backed order persistence, JSON items column).
+- `robot.md` — RobotSqliteRepository (SQLite-backed robot persistence, dual JSON columns).
 
 ### Utility Guides (`docs/guides/utils/`)
 
@@ -140,6 +156,7 @@ Guide documents are in `docs/guides/`:
 - **Repository tests:** `src/repos/tests/`
 - **Utility tests:** `src/utils/tests/`
 - **Run all:** `pytest src/` from project root (with venv activated).
+- **Run repos only:** `pytest src/repos/` from project root.
 - **Run mappers only:** `pytest src/mappers/` from project root.
 - **Run utils only:** `pytest src/utils/` from project root.
 
