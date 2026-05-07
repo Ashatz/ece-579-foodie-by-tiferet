@@ -1,0 +1,3 @@
+"""
+FOODIE Domain Event Tests
+"""
