@@ -102,12 +102,28 @@ class BagOrder(DomainEvent):
             robot_id=robot_id,
         )
 
+        # Verify the robot has no beverage bags (exclusive transport).
+        self.verify(
+            expression=all(b.bag_type != 'beverage' for b in robot.compartments),
+            error_code='ROBOT_CARGO_CONFLICT',
+            robot_id=robot_id,
+        )
+
         # Load the order and verify it exists.
         order = self.order_service.get(order_id)
         self.verify(
             expression=order is not None,
             error_code='ORDER_NOT_FOUND',
             order_id=order_id,
+        )
+
+        # Verify the order is an item order.
+        self.verify(
+            expression=order.order_type == 'item',
+            error_code='ORDER_TYPE_MISMATCH',
+            order_id=order_id,
+            expected='item',
+            actual=order.order_type,
         )
 
         # Print trace header.

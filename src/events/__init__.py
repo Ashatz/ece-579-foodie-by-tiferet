@@ -9,6 +9,7 @@ Each event implements one of the three project goals.
 
 # ** app
 from .migrate import SeedDatabase
+from .order import SelectBeverage
 from .robot import (
     BagOrder,
     ChargeRobot,
@@ -28,4 +29,5 @@ __all__ = [
     'PlanRoute',
     'ReturnToWarehouse',
     'SeedDatabase',
+    'SelectBeverage',
 ]
