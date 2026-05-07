@@ -49,7 +49,7 @@ src/
 Features are grouped into three domains:
 
 **admin** — Setup operations:
-- `admin.seed_database` — Pre-seed SQLite database with demo orders and robots.
+- `admin.seed_database` — Pre-seed SQLite database with robots (orders placed via `order.new_item` / `order.new_beverage`).
 
 **robot** — Robot lifecycle operations (bag → route → deliver → return → charge):
 - `robot.bag_order` — Forward-chaining bagging onto a robot (Goal B).
@@ -120,7 +120,7 @@ Single `config.yml` at project root with sections:
 
 ## Data Files
 
-- `menu.yml` — Item catalog (4 items) and beverage knowledge base (10 beverages).
+- `menu.yml` — Item catalog (4 items) and beverage knowledge base (3 beverages).
 - `campus.yml` — Campus terrain graph (10 locations + edge adjacency list).
 - `foodie.db` — SQLite database for runtime order/robot state (auto-created by `SeedDatabase`).
 

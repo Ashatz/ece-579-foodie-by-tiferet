@@ -75,9 +75,9 @@ src/
 │   ├── robot.py       # Robot (battery, compartments, energy model)
 │   └── beverage.py    # Beverage (type, brand, health/allergy matching)
 ├── events/            # Domain events — orchestrate business logic
-│   ├── migrate.py     # SeedDatabase
+│   ├── migrate.py     # SeedDatabase (robots only)
 │   ├── robot.py       # BagOrder, PlanRoute, DeliverOrder, ReturnToWarehouse, ChargeRobot, DispatchFleet
-│   └── order.py       # SelectBeverage
+│   └── order.py       # PlaceItemOrder, PlaceBeverageOrder, SelectBeverage
 ├── interfaces/        # Service ABCs (contracts)
 │   ├── item.py        # ItemService
 │   ├── order.py       # OrderService
@@ -468,7 +468,8 @@ Pathway_6 ↔ Dorm_1
 | Backward-chaining selector | Collaborative — human designed rule base, AI implemented inference engine |
 | Rule bases (both B and C) | Human-designed rule logic, AI structured into code |
 | Domain events (orchestration) | AI-generated from TRDs, human-reviewed and refined |
-| Test suite (186 tests) | AI-generated with human-specified test scenarios |
+| Order placement events (v1.1.0) | Human identified gap, AI drafted TRD and implemented |
+| Test suite (190 tests) | AI-generated with human-specified test scenarios |
 | Configuration files (YAML) | Collaborative — human specified data, AI structured format |
 | STRIPS rules (Goal D) | Human-designed, AI assisted with formalization |
 
@@ -516,17 +517,24 @@ python foodie.py
 ```
 
 This executes all three goals sequentially:
-1. Seeds the database with demo orders and robots.
-2. **Goal B:** Bags order ORD-101 using forward chaining.
-3. **Goal A:** Plans and executes A* route for R1 to Building_A, delivers, returns, recharges.
-4. **Goal C:** Selects beverages for two scenarios using backward chaining.
-5. **Goal A:** Routes R2 and R3 to deliver beverage orders.
+1. Seeds the database with robots.
+2. **Order Placement:** Places an item order (ORD-101) and two beverage orders (ORD-102, ORD-103).
+3. **Goal B:** Bags order ORD-101 using forward chaining.
+4. **Goal A:** Plans and executes A* route for R1 to Building_A, delivers, returns, recharges.
+5. **Goal C:** Selects beverages for two scenarios using backward chaining.
+6. **Goal A:** Routes R2 and R3 to deliver beverage orders.
 
 ### Running Individual Features via CLI
 
 ```bash
-# Seed the database
+# Seed the database (robots)
 python foodie_cli.py admin seed-database
+
+# Place an item order from the menu catalog
+python foodie_cli.py order new-item ORD-101 Building_A --items "loaf of bread:2" "pint ice cream:1"
+
+# Place a beverage order
+python foodie_cli.py order new-beverage ORD-102 Building_B
 
 # Bag an order
 python foodie_cli.py robot bag-order R1 ORD-101
@@ -541,7 +549,7 @@ python foodie_cli.py order select-beverage R2 ORD-102 --facts health_nut=True al
 ### Running Tests
 
 ```bash
-# Run all tests (186 tests)
+# Run all tests (190 tests)
 pytest src/
 
 # Run by layer
