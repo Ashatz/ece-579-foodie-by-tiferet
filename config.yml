@@ -91,6 +91,7 @@ features:
       commands:
         - attribute_id: seed_database_evt
           name: Seed demo data
+  robot:
     bag_order:
       name: Bag Order
       description: Forward-chaining bagging for a robot and order (Goal B)
@@ -127,6 +128,7 @@ features:
       commands:
         - attribute_id: dispatch_fleet_evt
           name: Dispatch fleet routes
+  order:
     select_beverage:
       name: Select Beverage
       description: Backward-chaining beverage selection for a guest (Goal C)
@@ -143,8 +145,9 @@ cli:
         name: Seed Database Command
         description: Pre-seed the SQLite database with demo orders and robots.
         args: []
+    robot:
       bag-order:
-        group_key: admin
+        group_key: robot
         key: bag_order
         name: Bag Order Command
         description: Bag an order onto a robot using forward chaining.
@@ -156,7 +159,7 @@ cli:
               - order_id
             description: The order to bag.
       plan-route:
-        group_key: admin
+        group_key: robot
         key: plan_route
         name: Plan Route Command
         description: Plan an A* route for a robot to deliver an order.
@@ -168,7 +171,7 @@ cli:
               - order_id
             description: The order whose destination is the goal.
       deliver-order:
-        group_key: admin
+        group_key: robot
         key: deliver_order
         name: Deliver Order Command
         description: Deliver bags at the destination.
@@ -180,7 +183,7 @@ cli:
               - order_id
             description: The order to deliver.
       return-to-warehouse:
-        group_key: admin
+        group_key: robot
         key: return_to_warehouse
         name: Return to Warehouse Command
         description: Route a robot back to the Food Warehouse.
@@ -189,7 +192,7 @@ cli:
               - robot_id
             description: The robot to return.
       charge-robot:
-        group_key: admin
+        group_key: robot
         key: charge_robot
         name: Charge Robot Command
         description: Charge a robot to full battery at the warehouse.
@@ -198,13 +201,14 @@ cli:
               - robot_id
             description: The robot to charge.
       dispatch-fleet:
-        group_key: admin
+        group_key: robot
         key: dispatch_fleet
         name: Dispatch Fleet Command
         description: Round-robin fleet dispatch with A* routing.
         args: []
+    order:
       select-beverage:
-        group_key: admin
+        group_key: order
         key: select_beverage
         name: Select Beverage Command
         description: Select a beverage for a guest using backward chaining.
