@@ -104,6 +104,12 @@ Guide documents are in `docs/guides/`:
 - `robot.md` — Robot domain model (battery, compartments, energy simulation).
 - `beverage.md` — Beverage domain model (type, brand, health/allergy matching for backward chaining).
 
+### Interface Guides (`docs/guides/interfaces/`)
+
+- `bagging.md` — BaggingService (forward-chaining bagging contract; Goal B).
+- `route_planner.md` — RoutePlannerService (A* route planning and replanning contract; Goal A).
+- `beverage_select.md` — BeverageSelectService (backward-chaining beverage selection contract; Goal C).
+
 ### Utility Guides (`docs/guides/utils/`)
 
 - `route_planner.md` — AStarRoutePlanner (A* search, Manhattan heuristic, obstacle replanning; Goal A).
@@ -132,8 +138,10 @@ Guide documents are in `docs/guides/`:
 - **Domain tests:** `src/domain/tests/`
 - **Mapper tests:** `src/mappers/tests/`
 - **Repository tests:** `src/repos/tests/`
+- **Utility tests:** `src/utils/tests/`
 - **Run all:** `pytest src/` from project root (with venv activated).
 - **Run mappers only:** `pytest src/mappers/` from project root.
+- **Run utils only:** `pytest src/utils/` from project root.
 
 ## Contributing
 

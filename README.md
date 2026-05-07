@@ -272,6 +272,12 @@ Guide documents for each layer of the FOODIE codebase are available in `docs/gui
 - [Robot](docs/guides/domain/robot.md) — Delivery robot (battery, compartments, status)
 - [Beverage](docs/guides/domain/beverage.md) — Beverage recommendation (backward chaining)
 
+### Interface Guides
+
+- [BaggingService](docs/guides/interfaces/bagging.md) — Forward-chaining bagging contract (Goal B)
+- [RoutePlannerService](docs/guides/interfaces/route_planner.md) — A* route planning and replanning contract (Goal A)
+- [BeverageSelectService](docs/guides/interfaces/beverage_select.md) — Backward-chaining beverage selection contract (Goal C)
+
 ### Utility Guides
 
 - [AStarRoutePlanner](docs/guides/utils/route_planner.md) — A* search algorithm, Manhattan heuristic, obstacle replanning (Goal A)
