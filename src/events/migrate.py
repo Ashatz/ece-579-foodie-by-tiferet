@@ -110,11 +110,13 @@ class SeedDatabase(DomainEvent):
             ),
             OrderAggregate(
                 order_id='ORD-102',
+                order_type='beverage',
                 destination='Building_B',
                 items=[],
             ),
             OrderAggregate(
                 order_id='ORD-103',
+                order_type='beverage',
                 destination='Dorm_1',
                 items=[],
             ),

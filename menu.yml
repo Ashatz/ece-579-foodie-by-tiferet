@@ -22,16 +22,12 @@ beverages:
     beverage_type: juice
     brand: FreshRoots
     is_health_friendly: true
-    avoids_allergens:
-      - citrus
+    avoids_allergens: citrus
   Corona Beer:
     beverage_type: beer
     brand: Corona
-    avoids_allergens: []
   Sparkling Water:
     beverage_type: water
     brand: San Pellegrino
     is_health_friendly: true
-    avoids_allergens:
-      - citrus
-      - gluten
+    avoids_allergens: citrus, gluten

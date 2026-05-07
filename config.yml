@@ -5,20 +5,6 @@ interfaces:
   foodie:
     name: FOODIE Expert System
     description: Food Intelligence Electrified — campus delivery robot simulation
-  foodie_cli:
-    name: FOODIE CLI
-    description: Command-line interface for FOODIE operations
-    module_path: tiferet.contexts.cli
-    class_name: CliContext
-    attrs:
-      cli_repo:
-        module_path: tiferet.proxies.yaml.cli
-        class_name: CliYamlProxy
-        params:
-          cli_config_file: config.yml
-      cli_service:
-        module_path: tiferet.handlers.cli
-        class_name: CliHandler
 
 services:
   # --- Domain Events ---
@@ -89,51 +75,51 @@ features:
       name: Seed Database
       description: Pre-seed SQLite database with demo orders and robots
       commands:
-        - attribute_id: seed_database_evt
+        - service_id: seed_database_evt
           name: Seed demo data
   robot:
     bag_order:
       name: Bag Order
       description: Forward-chaining bagging for a robot and order (Goal B)
       commands:
-        - attribute_id: bag_order_evt
+        - service_id: bag_order_evt
           name: Bag items onto robot
     plan_route:
       name: Plan Route
       description: A* route planning for a single robot delivery (Goal A)
       commands:
-        - attribute_id: plan_route_evt
+        - service_id: plan_route_evt
           name: Plan A* route to destination
     deliver_order:
       name: Deliver Order
       description: Deliver bags at the destination and clear robot compartments
       commands:
-        - attribute_id: deliver_order_evt
+        - service_id: deliver_order_evt
           name: Deliver order at destination
     return_to_warehouse:
       name: Return to Warehouse
       description: Route a robot back to the Food Warehouse
       commands:
-        - attribute_id: return_to_warehouse_evt
+        - service_id: return_to_warehouse_evt
           name: Return robot to FW
     charge_robot:
       name: Charge Robot
       description: Charge a robot to full battery at the Food Warehouse
       commands:
-        - attribute_id: charge_robot_evt
+        - service_id: charge_robot_evt
           name: Charge robot battery
     dispatch_fleet:
       name: Dispatch Fleet
       description: Round-robin fleet dispatch with A* routing (Goal A)
       commands:
-        - attribute_id: dispatch_fleet_evt
+        - service_id: dispatch_fleet_evt
           name: Dispatch fleet routes
   order:
     select_beverage:
       name: Select Beverage
       description: Backward-chaining beverage selection for a guest (Goal C)
       commands:
-        - attribute_id: select_beverage_evt
+        - service_id: select_beverage_evt
           name: Select beverage via inference
 
 cli:
@@ -141,14 +127,14 @@ cli:
     admin:
       seed-database:
         group_key: admin
-        key: seed_database
+        key: seed-database
         name: Seed Database Command
         description: Pre-seed the SQLite database with demo orders and robots.
         args: []
     robot:
       bag-order:
         group_key: robot
-        key: bag_order
+        key: bag-order
         name: Bag Order Command
         description: Bag an order onto a robot using forward chaining.
         args:
@@ -160,7 +146,7 @@ cli:
             description: The order to bag.
       plan-route:
         group_key: robot
-        key: plan_route
+        key: plan-route
         name: Plan Route Command
         description: Plan an A* route for a robot to deliver an order.
         args:
@@ -172,7 +158,7 @@ cli:
             description: The order whose destination is the goal.
       deliver-order:
         group_key: robot
-        key: deliver_order
+        key: deliver-order
         name: Deliver Order Command
         description: Deliver bags at the destination.
         args:
@@ -184,7 +170,7 @@ cli:
             description: The order to deliver.
       return-to-warehouse:
         group_key: robot
-        key: return_to_warehouse
+        key: return-to-warehouse
         name: Return to Warehouse Command
         description: Route a robot back to the Food Warehouse.
         args:
@@ -193,7 +179,7 @@ cli:
             description: The robot to return.
       charge-robot:
         group_key: robot
-        key: charge_robot
+        key: charge-robot
         name: Charge Robot Command
         description: Charge a robot to full battery at the warehouse.
         args:
@@ -202,14 +188,14 @@ cli:
             description: The robot to charge.
       dispatch-fleet:
         group_key: robot
-        key: dispatch_fleet
+        key: dispatch-fleet
         name: Dispatch Fleet Command
         description: Round-robin fleet dispatch with A* routing.
         args: []
     order:
       select-beverage:
         group_key: order
-        key: select_beverage
+        key: select-beverage
         name: Select Beverage Command
         description: Select a beverage for a guest using backward chaining.
         args:
@@ -225,42 +211,42 @@ cli:
             nargs: '*'
 
 errors:
-  order_not_found:
+  ORDER_NOT_FOUND:
     name: Order Not Found
     message:
       - lang: en_US
         text: 'Order {order_id} not found'
-  robot_not_found:
+  ROBOT_NOT_FOUND:
     name: Robot Not Found
     message:
       - lang: en_US
         text: 'Robot {robot_id} not found'
-  robot_not_at_warehouse:
+  ROBOT_NOT_AT_WAREHOUSE:
     name: Robot Not at Warehouse
     message:
       - lang: en_US
         text: 'Robot {robot_id} is not at the Food Warehouse'
-  robot_cargo_conflict:
+  ROBOT_CARGO_CONFLICT:
     name: Robot Cargo Conflict
     message:
       - lang: en_US
         text: 'Robot {robot_id} has incompatible cargo loaded'
-  order_type_mismatch:
+  ORDER_TYPE_MISMATCH:
     name: Order Type Mismatch
     message:
       - lang: en_US
         text: 'Order {order_id} expected type {expected}, got {actual}'
-  robot_no_bags:
+  ROBOT_NO_BAGS:
     name: Robot Has No Bags
     message:
       - lang: en_US
         text: 'Robot {robot_id} has no bags loaded'
-  robot_not_at_destination:
+  ROBOT_NOT_AT_DESTINATION:
     name: Robot Not at Destination
     message:
       - lang: en_US
         text: 'Robot {robot_id} is not at destination {destination}'
-  robot_already_at_warehouse:
+  ROBOT_ALREADY_AT_WAREHOUSE:
     name: Robot Already at Warehouse
     message:
       - lang: en_US

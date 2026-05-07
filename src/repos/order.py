@@ -50,6 +50,7 @@ class OrderSqliteRepository(OrderService):
             db.executescript('''
                 CREATE TABLE IF NOT EXISTS orders (
                     order_id TEXT PRIMARY KEY,
+                    order_type TEXT NOT NULL DEFAULT 'item',
                     destination TEXT NOT NULL,
                     status TEXT NOT NULL,
                     items_json TEXT NOT NULL
@@ -137,10 +138,11 @@ class OrderSqliteRepository(OrderService):
 
         with Sqlite(self.db_path, mode='rw') as db:
             db.execute('''
-                INSERT OR REPLACE INTO orders (order_id, destination, status, items_json)
-                VALUES (?, ?, ?, ?)
+                INSERT OR REPLACE INTO orders (order_id, order_type, destination, status, items_json)
+                VALUES (?, ?, ?, ?, ?)
             ''', (
                 order.order_id,
+                order.order_type,
                 order.destination,
                 order.status,
                 data.get('items_json', '[]'),
