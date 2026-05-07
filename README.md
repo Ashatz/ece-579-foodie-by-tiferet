@@ -242,9 +242,9 @@ FOODIE follows the **Tiferet** framework's Domain-Driven Design architecture:
 
 ### AI Techniques Implemented
 
-- **A\* Search** (`plan_route.py`): Uses `heapq` priority queue, Manhattan distance heuristic, and adjacency-list graph representation. Supports dynamic obstacle detection and mid-route replanning.
-- **Forward Chaining** (`bag_order.py`): Production system with size-priority ordering, frozen/fragile/capacity rules, and sequential rule-firing trace output.
-- **Backward Chaining** (`select_beverage.py`): 15-rule knowledge base with recursive goal decomposition. Rules chain from specific beverages through intermediate conclusions (e.g., "JUICE is indicated") back to guest facts.
+- **A\* Search** (`src/utils/route_planner.py`): Uses `heapq` priority queue, Manhattan distance heuristic, and adjacency-list graph representation. Supports dynamic obstacle detection and mid-route replanning.
+- **Forward Chaining** (`src/utils/bagger.py`): Production system with size-priority ordering, frozen/fragile/capacity rules, and sequential rule-firing trace output.
+- **Backward Chaining** (`src/utils/backward_chain_selector.py`): 15-rule knowledge base with recursive goal decomposition. Rules chain from specific beverages through intermediate conclusions (e.g., "JUICE is indicated") back to guest facts.
 
 ## 9. Customizing the Simulation
 
