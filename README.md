@@ -203,9 +203,9 @@ FOODIE follows the **Tiferet** framework's Domain-Driven Design architecture:
 - **Configuration** (`config.yml`) – Unified Tiferet v2 configuration defining interfaces, DI services, features, CLI commands, and errors. The `AppBuilder` and `CliBuilder` load this file to bootstrap the application.
 - **Domain Models** (`src/domain/`) – Pydantic v2 models extending `DomainObject`. Each model uses `Field(...)` for validation, `Literal` for constrained choices, and `List[T]` for nested collections.
 - **Domain Events** (`src/events/`) – Operation classes extending `DomainEvent`. Each event receives dependencies via constructor injection and exposes an `execute(**kwargs)` method. Events are resolved from `config.yml` services via Tiferet's DI container. The `SeedDatabase` event pre-seeds the SQLite database with demo orders and robots before the simulation begins.
-- **Service Interfaces** (`src/interfaces/`) – Abstract service contracts extending `Service`. Define the expected data-access and computational APIs for each domain.
+- **Service Interfaces** (`src/interfaces/`) – Abstract service contracts extending `Service`. Eight interfaces: 5 data-access contracts (`ItemService`, `BeverageService`, `LocationService`, `OrderService`, `RobotService`) defining CRUD operations for domain persistence, plus 3 utility-associated contracts (`BaggingService`, `RoutePlannerService`, `BeverageSelectService`) defining computational APIs.
 - **Mappers** (`src/mappers/`) – Aggregates provide validated mutation methods (e.g., `update_status`, `update_battery`); TransferObjects provide role-based serialization for persistence. Three patterns exist: flat YAML-backed mappers (`ItemYamlObject`, `LocationYamlObject`, `BeverageYamlObject`), an aggregate-only mapper (`BagAggregate` with static factories), and SQL-backed mappers with custom JSON serialization (`OrderSqlObject` with one JSON column, `RobotSqlObject` with two).
-- **Repositories** (`src/repos/`) – Concrete service implementations. `LocationYamlRepository` persists to YAML; `OrderSqliteRepository`/`RobotSqliteRepository` persist to SQLite.
+- **Repositories** (`src/repos/`) – Concrete service implementations with two persistence backends. YAML-backed: `ItemYamlRepository`, `BeverageYamlRepository`, `LocationYamlRepository` for universal/config data (`menu.yml`, `campus.yml`). SQLite-backed: `OrderSqliteRepository`, `RobotSqliteRepository` for instance-specific runtime data (`foodie.db`).
 - **Utilities** (`src/utils/`) – Concrete computational infrastructure: `AStarRoutePlanner`, `ForwardChainBagger`, `BackwardChainSelector`. Each implements a service interface and is injected via DI.
 - **Data** – `menu.yml` (item catalog + beverage knowledge base), `campus.yml` (campus terrain graph with locations and edges).
 
@@ -272,11 +272,27 @@ Guide documents for each layer of the FOODIE codebase are available in `docs/gui
 - [Robot](docs/guides/domain/robot.md) — Delivery robot (battery, compartments, status)
 - [Beverage](docs/guides/domain/beverage.md) — Beverage recommendation (backward chaining)
 
-### Interface Guides
+### Data-Access Interface Guides
+
+- [ItemService](docs/guides/interfaces/item.md) — CRUD contract for menu catalog items (YAML-backed)
+- [BeverageService](docs/guides/interfaces/beverage.md) — CRUD contract for beverage knowledge base (YAML-backed)
+- [LocationService](docs/guides/interfaces/location.md) — CRUD + `get_edges()` contract for campus terrain (YAML-backed)
+- [OrderService](docs/guides/interfaces/order.md) — CRUD contract for runtime orders (SQLite-backed)
+- [RobotService](docs/guides/interfaces/robot.md) — CRUD contract for fleet state (SQLite-backed)
+
+### Utility Interface Guides
 
 - [BaggingService](docs/guides/interfaces/bagging.md) — Forward-chaining bagging contract (Goal B)
 - [RoutePlannerService](docs/guides/interfaces/route_planner.md) — A* route planning and replanning contract (Goal A)
 - [BeverageSelectService](docs/guides/interfaces/beverage_select.md) — Backward-chaining beverage selection contract (Goal C)
+
+### Repository Guides
+
+- [ItemYamlRepository](docs/guides/repos/item.md) — YAML-backed item persistence (`menu.yml`, `items` section)
+- [BeverageYamlRepository](docs/guides/repos/beverage.md) — YAML-backed beverage persistence (`menu.yml`, `beverages` section)
+- [LocationYamlRepository](docs/guides/repos/location.md) — YAML-backed location persistence (`campus.yml`, `locations` + `edges` sections)
+- [OrderSqliteRepository](docs/guides/repos/order.md) — SQLite-backed order persistence (JSON items column)
+- [RobotSqliteRepository](docs/guides/repos/robot.md) — SQLite-backed robot persistence (dual JSON columns)
 
 ### Utility Guides
 
@@ -300,7 +316,24 @@ Guide documents for each layer of the FOODIE codebase are available in `docs/gui
 - [PlanRoute](docs/guides/events/plan_route.md) — Fleet orchestration, round-robin assignment, and A* delegation (Goal A)
 - [SelectBeverage](docs/guides/events/select_beverage.md) — Fact parsing, backward-chaining delegation, and fallback logic (Goal C)
 
-## 11. Submission Files
+## 11. Running Tests
+
+```bash
+# Activate virtual environment
+source .venv/bin/activate
+
+# Run all tests
+pytest src/
+
+# Run repository tests only
+pytest src/repos/
+
+# Run specific repository test suite
+pytest src/repos/tests/test_item.py
+pytest src/repos/tests/test_order.py
+```
+
+## 12. Submission Files
 
 1. **Project Report** – includes architecture, algorithms, rule bases, STRIPS rules, and sample runs
 2. **Code** – this repository
