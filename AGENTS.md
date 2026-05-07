@@ -1,11 +1,11 @@
-# AGENTS.md — FOODIE (v1.0.0b1)
+# AGENTS.md — FOODIE (v1.1.0)
 
 ## Project Overview
 
 **FOODIE** (Food Intelligence Electrified) is an AI expert system for campus food-delivery robots, built on the **Tiferet** framework (v2.0.0b1, Pydantic v2). It implements three AI techniques: A* search, forward chaining, and backward chaining.
 
 - **Repository:** https://github.com/ashatz/ece-579-foodie-by-tiferet
-- **Branch:** `v1.0b1-release`
+- **Branch:** `master`
 - **Python:** ≥ 3.10
 - **Framework:** Tiferet 2.0.0b1
 
