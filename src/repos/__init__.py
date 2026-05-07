@@ -1,7 +1,6 @@
-"""
-FOODIE Repositories
+"""FOODIE Repositories
 
-YAML-backed repository implementations for domain persistence.
+YAML and SQLite-backed repository implementations for domain persistence.
 """
 
 # *** imports
@@ -10,6 +9,8 @@ YAML-backed repository implementations for domain persistence.
 from .beverage import BeverageYamlRepository
 from .item import ItemYamlRepository
 from .location import LocationYamlRepository
+from .order import OrderSqliteRepository
+from .robot import RobotSqliteRepository
 
 # *** exports
 
@@ -17,4 +18,6 @@ __all__ = [
     'BeverageYamlRepository',
     'ItemYamlRepository',
     'LocationYamlRepository',
+    'OrderSqliteRepository',
+    'RobotSqliteRepository',
 ]
