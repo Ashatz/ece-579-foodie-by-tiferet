@@ -1,0 +1,37 @@
+# FOODIE Menu Data
+# Item catalog (FOODIE_BAGGER) and beverage knowledge base (FOODIE_SPA).
+
+items:
+  1-gallon water bottle:
+    size: large
+    quantity: 2
+  pint ice cream:
+    size: medium
+    is_frozen: true
+    quantity: 1
+  granola box:
+    size: medium
+    is_fragile: true
+    quantity: 1
+  loaf of bread:
+    size: medium
+    quantity: 1
+
+beverages:
+  Carrot Juice:
+    beverage_type: juice
+    brand: FreshRoots
+    is_health_friendly: true
+    avoids_allergens:
+      - citrus
+  Corona Beer:
+    beverage_type: beer
+    brand: Corona
+    avoids_allergens: []
+  Sparkling Water:
+    beverage_type: water
+    brand: San Pellegrino
+    is_health_friendly: true
+    avoids_allergens:
+      - citrus
+      - gluten

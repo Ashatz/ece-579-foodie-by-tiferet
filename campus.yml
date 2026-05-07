@@ -1,0 +1,72 @@
+# FOODIE Campus Terrain Graph
+# Location nodes and bidirectional edge adjacency list for A* route planning.
+
+locations:
+  FW:
+    x: 0
+    y: 0
+    is_food_warehouse: true
+  Pathway_1:
+    x: 1
+    y: 2
+  Pathway_2:
+    x: 3
+    y: 2
+  Pathway_3:
+    x: 3
+    y: 5
+    is_obstacle_prone: true
+  Pathway_4:
+    x: 5
+    y: 5
+  Pathway_5:
+    x: 6
+    y: 1
+  Pathway_6:
+    x: 1
+    y: 5
+  Building_A:
+    x: 5
+    y: 8
+  Building_B:
+    x: 6
+    y: 3
+  Dorm_1:
+    x: 0
+    y: 5
+
+edges:
+  FW:
+    - Pathway_1
+    - Pathway_6
+  Pathway_1:
+    - FW
+    - Pathway_2
+    - Pathway_6
+  Pathway_2:
+    - Pathway_1
+    - Pathway_3
+    - Pathway_5
+  Pathway_3:
+    - Pathway_2
+    - Pathway_4
+    - Pathway_6
+  Pathway_4:
+    - Pathway_3
+    - Building_A
+    - Pathway_5
+  Pathway_5:
+    - Pathway_2
+    - Pathway_4
+    - Building_B
+  Pathway_6:
+    - FW
+    - Pathway_1
+    - Pathway_3
+    - Dorm_1
+  Building_A:
+    - Pathway_4
+  Building_B:
+    - Pathway_5
+  Dorm_1:
+    - Pathway_6
