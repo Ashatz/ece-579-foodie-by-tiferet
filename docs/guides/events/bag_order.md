@@ -42,10 +42,13 @@ Items in the order have a `quantity` field (e.g., "2x water bottle"). The bagger
 
 ## Error Handling
 
-- **`ROBOT_NOT_FOUND`** — Raised when `robot_service.get()` returns `None`.
-- **`ORDER_NOT_FOUND`** — Raised when `order_service.get()` returns `None`.
+- **`ROBOT_NOT_FOUND`** — Robot ID does not exist.
+- **`ROBOT_NOT_AT_WAREHOUSE`** — Robot is not at the Food Warehouse.
+- **`ROBOT_CARGO_CONFLICT`** — Robot has beverage bags loaded (exclusive transport).
+- **`ORDER_NOT_FOUND`** — Order ID does not exist.
+- **`ORDER_TYPE_MISMATCH`** — Order is not an item order.
 
-Both use `self.verify()` for domain rule enforcement.
+All use `self.verify()` for domain rule enforcement.
 
 ## Trace Output Example
 
@@ -58,6 +61,14 @@ Both use `self.verify()` for domain rule enforcement.
     Bag freezer_bag_2 (freezer) contains: 1x pint ice cream (frozen) [medium] (1/10)
     Bag bag_3 (paper) contains: 1x granola box (fragile) [medium] (1/10)
 ```
+
+## Preconditions
+
+- **Robot exists** (`ROBOT_NOT_FOUND`).
+- **Robot is at Food Warehouse** (`ROBOT_NOT_AT_WAREHOUSE`).
+- **Robot has no beverage bags** — exclusive transport (`ROBOT_CARGO_CONFLICT`).
+- **Order exists** (`ORDER_NOT_FOUND`).
+- **Order type is `'item'`** (`ORDER_TYPE_MISMATCH`).
 
 ## Integration with config.yml
 
@@ -74,13 +85,13 @@ And exposed as a feature:
 
 ```yaml
 features:
-  admin:
+  robot:
     bag_order:
       name: Bag Order
-      description: Bag an order and load onto a robot
+      description: Forward-chaining bagging for a robot and order (Goal B)
       commands:
-        - attribute_id: bag_order_evt
-          name: Bag order items for robot
+        - service_id: bag_order_evt
+          name: Bag items onto robot
 ```
 
 ## Related Components
