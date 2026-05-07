@@ -9,11 +9,23 @@ Each event implements one of the three project goals.
 
 # ** app
 from .migrate import SeedDatabase
-from .robot import BagOrder
+from .robot import (
+    BagOrder,
+    ChargeRobot,
+    DeliverOrder,
+    DispatchFleet,
+    PlanRoute,
+    ReturnToWarehouse,
+)
 
 # *** exports
 
 __all__ = [
     'BagOrder',
+    'ChargeRobot',
+    'DeliverOrder',
+    'DispatchFleet',
+    'PlanRoute',
+    'ReturnToWarehouse',
     'SeedDatabase',
 ]
