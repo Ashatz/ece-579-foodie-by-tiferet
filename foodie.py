@@ -106,13 +106,23 @@ if __name__ == '__main__':
     ))
 
     # ======================================================================
-    # GOAL A — Fleet Dispatch (Round-Robin A* Routing)
+    # Goal A — Beverage Delivery (Individual Robot Dispatch)
     # ======================================================================
     print('\n' + '=' * 70)
-    print('GOAL A — Fleet Dispatch: Round-Robin A* Routing')
+    print('GOAL A — Beverage Delivery: Individual Robot Dispatch')
     print('=' * 70)
 
-    app.run('foodie', 'robot.dispatch_fleet')
+    # Route R2 to deliver ORD-102 at Building_B.
+    app.run('foodie', 'robot.plan_route', data=dict(
+        robot_id='R2',
+        order_id='ORD-102',
+    ))
+
+    # Route R3 to deliver ORD-103 at Dorm_1.
+    app.run('foodie', 'robot.plan_route', data=dict(
+        robot_id='R3',
+        order_id='ORD-103',
+    ))
 
     print('\n' + '=' * 70)
     print('FOODIE Demo Complete')
