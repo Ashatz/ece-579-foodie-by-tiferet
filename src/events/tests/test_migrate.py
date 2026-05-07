@@ -174,13 +174,16 @@ def test_seed_database_first_order_has_items(dependencies, mock_order_service):
     # Extract the orders passed to save().
     saved_orders = [call.args[0] for call in mock_order_service.save.call_args_list]
 
-    # ORD-101 should have all 4 menu items.
+    # ORD-101 should have all 4 menu items and be an item order.
     assert saved_orders[0].order_id == 'ORD-101'
+    assert saved_orders[0].order_type == 'item'
     assert len(saved_orders[0].items) == 4
 
-    # ORD-102 and ORD-103 should be empty.
+    # ORD-102 and ORD-103 should be empty beverage orders.
     assert saved_orders[1].order_id == 'ORD-102'
+    assert saved_orders[1].order_type == 'beverage'
     assert len(saved_orders[1].items) == 0
 
     assert saved_orders[2].order_id == 'ORD-103'
+    assert saved_orders[2].order_type == 'beverage'
     assert len(saved_orders[2].items) == 0
