@@ -1,4 +1,4 @@
-# AGENTS.md — FOODIE (v1.1.0)
+# AGENTS.md — FOODIE (v1.2.0)
 
 ## Project Overview
 
@@ -23,7 +23,7 @@ src/
 ├── domain/            # Pydantic v2 domain models (Item, Bag, Order, Location, Robot, Beverage)
 ├── events/            # Domain events — 10 events across 3 modules
 │   ├── migrate.py     # SeedDatabase (database seeding)
-│   ├── robot.py       # BagOrder, PlanRoute, DeliverOrder, ReturnToWarehouse, ChargeRobot, DispatchFleet
+│   ├── robot.py       # BagOrder, PlanRoute, DeliverOrder, ReturnToWarehouse, ChargeRobot, ViewFleet
 │   └── order.py       # PlaceItemOrder, PlaceBeverageOrder, SelectBeverage
 ├── interfaces/        # Service ABCs — 5 data-access + 3 utility contracts
 ├── mappers/           # Aggregates + TransferObjects (item, bag, beverage, location, order, robot)
@@ -57,7 +57,7 @@ Features are grouped into three domains:
 - `robot.deliver_order` — Deliver bags at the destination and clear robot compartments.
 - `robot.return_to_warehouse` — Route a robot back to the Food Warehouse.
 - `robot.charge_robot` — Charge a robot to full battery at the warehouse.
-- `robot.dispatch_fleet` — Round-robin fleet dispatch with A* routing (Goal A).
+- `robot.view_fleet` — Display real-time status for all robots in the fleet (read-only).
 
 **order** — Order-level operations:
 - `order.new_item` — Create an item order from menu catalog items.
@@ -74,7 +74,7 @@ Features are grouped into three domains:
 - **`DeliverOrder`** (`src/events/robot.py`) — Deliver bags at destination. Injects `RobotService`, `OrderService`.
 - **`ReturnToWarehouse`** (`src/events/robot.py`) — Route back to FW. Injects `RobotService`, `RoutePlannerService`, `LocationService`.
 - **`ChargeRobot`** (`src/events/robot.py`) — Charge battery at FW. Injects `RobotService`.
-- **`DispatchFleet`** (`src/events/robot.py`) — Fleet-level round-robin dispatch (Goal A). Injects `RobotService`, `OrderService`, `RoutePlannerService`, `LocationService`.
+- **`ViewFleet`** (`src/events/robot.py`) — Read-only fleet status display. Injects `RobotService` only. Prints `format_for_trace()` per robot; returns `robot_count` and per-robot status payload. Never mutates state.
 - **`PlaceItemOrder`** (`src/events/order.py`) — Create item orders from menu catalog. Injects `OrderService`, `ItemService`.
 - **`PlaceBeverageOrder`** (`src/events/order.py`) — Create beverage orders. Injects `OrderService`.
 - **`SelectBeverage`** (`src/events/order.py`) — Backward-chaining beverage selection (Goal C). Injects `OrderService`, `RobotService`, `BeverageService`, `BeverageSelectService`.
@@ -179,7 +179,7 @@ Guide documents are in `docs/guides/`:
 - `seed_database.md` — SeedDatabase (idempotent database seeding, robots only).
 - `place_order.md` — PlaceItemOrder and PlaceBeverageOrder (order creation from menu catalog).
 - `bag_order.md` — BagOrder (robot-centric bagging with forward-chaining delegation; Goal B).
-- `plan_route.md` — Robot Lifecycle Events: PlanRoute, DeliverOrder, ReturnToWarehouse, ChargeRobot, DispatchFleet (Goal A).
+- `plan_route.md` — Robot Lifecycle Events: PlanRoute (with low-battery emergency return), DeliverOrder, ReturnToWarehouse, ChargeRobot, ViewFleet (Goal A).
 - `select_beverage.md` — SelectBeverage (backward-chaining inference with order-type separation; Goal C).
 
 ## Testing
@@ -190,7 +190,7 @@ Guide documents are in `docs/guides/`:
 - **Repository tests:** `src/repos/tests/`
 - **Utility tests:** `src/utils/tests/`
 - **Event tests:** `src/events/tests/`
-- **Total:** 190 tests
+- **Total:** 192 tests
 - **Run all:** `pytest src/` from project root (with venv activated).
 - **Run by layer:**
   - `pytest src/domain/` — domain model tests
