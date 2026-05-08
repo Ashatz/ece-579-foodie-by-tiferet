@@ -373,6 +373,122 @@ def test_plan_route_no_path(route_deps, mock_robot_service, loaded_robot, mock_r
     assert result['path'] is None
 
 
+# ** test: plan_route_low_battery_after_route
+def test_plan_route_low_battery_after_route(
+    route_deps, mock_robot_service, mock_route_planner, sample_bags,
+):
+    '''
+    Test that a robot with insufficient battery after route consumption
+    returns to FW instead of completing the delivery.
+
+    A delivery distance of 700 units consumes 84% battery (700 * 0.12),
+    leaving 16% — below the 20% threshold. The event should abort the
+    delivery and route back to FW.
+
+    :param route_deps: Injected route event dependencies.
+    :type route_deps: dict
+    :param mock_robot_service: The mock robot service.
+    :type mock_robot_service: RobotService
+    :param mock_route_planner: The mock route planner.
+    :type mock_route_planner: RoutePlannerService
+    :param sample_bags: Sample bags loaded onto the robot.
+    :type sample_bags: list
+    '''
+
+    # Robot at FW with full battery and bags loaded.
+    robot = RobotAggregate(robot_id='R1', current_location=FOOD_WAREHOUSE)
+    for bag in sample_bags:
+        robot.load_bag(bag)
+    mock_robot_service.get.return_value = robot
+
+    # Delivery route costs 700 units (84% battery drain); return costs 13 units.
+    mock_route_planner.find_path.side_effect = [
+        (['FW', 'Building_A'], 700.0),
+        (['Building_A', 'FW'], 13.0),
+    ]
+    mock_route_planner.detect_and_replan.return_value = (None, 0.0, set())
+
+    # Execute the event.
+    result = DomainEvent.handle(
+        PlanRoute,
+        dependencies=route_deps,
+        robot_id='R1',
+        order_id='ORD-101',
+    )
+
+    # Verify low battery return status.
+    assert result['status'] == 'low_battery_return'
+    assert result['path'] == ['FW', 'Building_A']
+    assert result['distance'] == 700.0
+    assert result['return_path'] == ['Building_A', 'FW']
+    assert result['return_distance'] == 13.0
+
+    # Verify robot was saved at FW in idle state.
+    saved_robot = mock_robot_service.save.call_args.args[0]
+    assert saved_robot.current_location.is_food_warehouse
+    assert saved_robot.status == 'idle'
+
+    # Verify order was NOT updated (remains bagged for re-dispatch).
+    mock_robot_service.save.assert_called_once()
+
+
+# ** test: plan_route_low_battery_after_replan
+def test_plan_route_low_battery_after_replan(
+    route_deps, mock_robot_service, mock_route_planner, sample_bags,
+):
+    '''
+    Test that a low-battery condition triggered by an obstacle replan
+    (which increases the route distance beyond the battery threshold)
+    also results in an emergency return to FW.
+
+    The initial route costs 13 units (fine), but after obstacle detection
+    the replanned route costs 700 units (84% drain), dropping battery
+    below 20%.
+
+    :param route_deps: Injected route event dependencies.
+    :type route_deps: dict
+    :param mock_robot_service: The mock robot service.
+    :type mock_robot_service: RobotService
+    :param mock_route_planner: The mock route planner.
+    :type mock_route_planner: RoutePlannerService
+    :param sample_bags: Sample bags loaded onto the robot.
+    :type sample_bags: list
+    '''
+
+    # Robot at FW with full battery and bags loaded.
+    robot = RobotAggregate(robot_id='R1', current_location=FOOD_WAREHOUSE)
+    for bag in sample_bags:
+        robot.load_bag(bag)
+    mock_robot_service.get.return_value = robot
+
+    # Initial route is short; obstacle forces a 700-unit replan.
+    mock_route_planner.find_path.side_effect = [
+        (['FW', 'Building_A'], 13.0),         # initial delivery route
+        (['Building_A', 'FW'], 13.0),          # emergency return route
+    ]
+    mock_route_planner.detect_and_replan.return_value = (
+        ['FW', 'Pathway_X', 'Building_A'], 700.0, set(),
+    )
+
+    # Execute the event.
+    result = DomainEvent.handle(
+        PlanRoute,
+        dependencies=route_deps,
+        robot_id='R1',
+        order_id='ORD-101',
+    )
+
+    # Verify low battery return triggered by the replanned distance.
+    assert result['status'] == 'low_battery_return'
+    assert result['distance'] == 700.0
+    assert result['return_path'] == ['Building_A', 'FW']
+
+    # Verify robot landed at FW.
+    saved_robot = mock_robot_service.save.call_args.args[0]
+    assert saved_robot.current_location.is_food_warehouse
+    assert saved_robot.status == 'idle'
+
+
 # *** deliver_order tests
 
 # ** test: deliver_order_success

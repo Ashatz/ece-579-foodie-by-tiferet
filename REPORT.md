@@ -8,13 +8,11 @@
 
 ## 1. Introduction
 
-FOODIE (Food Intelligence Electrified) is an AI expert system that manages a network of autonomous food-delivery robots on a university campus. The system is built in Python using the Tiferet framework — a Domain-Driven Design (DDD) framework — and demonstrates three core AI techniques:
+FOODIE (Food Intelligence Electrified) is an AI expert system designed to manage a network of autonomous food-delivery robots operating across a university campus. The system is implemented in Python and demonstrates three canonical AI techniques — A\* search, forward chaining, and backward chaining — applied to a realistic, multi-agent delivery domain. A fourth technique, STRIPS-based planning, is included as a formal design specification for robotic arm loading.
 
-- **A\* Search** for optimal route planning with dynamic obstacle replanning (Goal A).
-- **Forward Chaining** for rule-based order bagging (Goal B — FOODIE_BAGGER).
-- **Backward Chaining** for inference-driven beverage selection (Goal C — FOODIE_SPA).
+Beyond satisfying the assignment's functional goals, FOODIE was deliberately constructed using the **Tiferet framework** — a Python framework for Domain-Driven Design (DDD) — for reasons that are both architectural and conceptual. The choice of Tiferet is motivated by its ability to faithfully model the structural components of an AI production system. In classical AI, a production system is characterized by three elements: a **database** (working memory that holds the current state of the world), a set of **operators** (rules or actions that transform that state), and a **control strategy** (the mechanism that determines which operator to apply next). Tiferet's layered architecture maps directly onto this decomposition. The repository and persistence layer — backed by YAML and SQLite — serves as the working memory database, storing the current state of robots, orders, campus locations, and the beverage knowledge base. Domain events serve as the operators: focused, injectable units of computation that read from and write to the working memory in well-defined ways. Finally, Tiferet's feature context, which resolves and sequences domain events from a configuration-driven dependency injection container, serves as the control strategy that governs execution flow.
 
-The system also includes STRIPS-based planning rules for robotic arm loading (Goal D, design only).
+This alignment between Tiferet's architecture and the classical production system model is not coincidental. Eric Evans, in *Domain-Driven Design: Tackling Complexity in the Heart of Software* (2003), argues that effective software must center its design around the domain it models, with domain logic expressed through a rich, explicit model rather than scattered across infrastructure code. Robert C. Martin's *Clean Architecture* (2017) extends this principle by prescribing a layered structure in which domain logic is fully independent of frameworks, databases, and delivery mechanisms. Tiferet implements both of these ideas: domain events and models are pure Python objects with no infrastructure coupling, while repositories and utilities implement abstract service contracts that can be swapped without affecting domain logic. The result is a system where each AI technique — A\*, forward chaining, and backward chaining — is implemented as a clean, testable unit of domain logic that is decoupled from persistence, configuration, and delivery concerns. This makes FOODIE not merely a working simulation, but a well-structured example of how DDD and clean architecture principles can be applied to AI systems design.
 
 ---
 
@@ -22,35 +20,30 @@ The system also includes STRIPS-based planning rules for robotic arm loading (Go
 
 ### Instructor's Assumptions (Adopted)
 
-1. The locale is a known, bounded campus terrain with pathways. Robots may encounter obstacles not known a priori.
-2. A finite fleet of robots, each with compartments, a robotic arm for bagging and loading, and onboard intelligence.
-3. Robots depart from and return to a Food Warehouse (FW) where they park, recharge, receive orders, bag items, and load compartments.
-4. Robots may deliver multiple orders to multiple locations before returning.
+The project specification provides a set of baseline assumptions that FOODIE adopts directly. The campus is a known, bounded terrain with defined pathways, meaning that the robot fleet operates on a graph structure rather than an open environment. Each robot is equipped with compartments, a robotic arm for bagging and loading, and onboard intelligence sufficient to execute delivery decisions. All robots depart from and return to a central Food Warehouse (FW), which serves as the operational hub for order receipt, bagging, loading, recharging, and fleet management. Robots may deliver multiple orders to multiple destinations before returning, meaning route planning must account for multi-stop itineraries.
 
 ### Additional Assumptions (Our Refinements)
 
-1. **Campus graph:** The campus is modeled as a weighted undirected graph with 10 nodes (FW, 6 pathways, 2 buildings, 1 dorm) and bidirectional edges defined in `campus.yml`. Coordinates are integer grid positions.
-2. **Fleet size:** 3 robots (R1, R2, R3), each starting at FW with 100% battery.
-3. **Energy model:** Battery consumption is proportional to Manhattan distance traveled (0.12% per unit distance). Robots recharge to 100% at FW.
-4. **Bag capacity:** Paper bags hold up to 10 items. Freezer bags are dedicated to frozen items. Fragile items always start a new bag and no additional items are added after them.
-5. **Order types:** Orders are either `item` (food, processed by FOODIE_BAGGER) or `beverage` (processed by FOODIE_SPA). A robot carries only one type at a time.
-6. **Beverage knowledge base:** 3 beverages in `menu.yml` (Carrot Juice, Corona Beer, Sparkling Water) and a 15-rule backward-chaining rule base.
-7. **Obstacle detection:** Simulated at the midpoint of any path longer than 3 nodes. The blocked edge is added in both directions and the planner re-routes from the obstacle point.
-8. **Round-robin dispatch:** When multiple orders are pending, robots are assigned via round-robin for concurrent delivery.
-9. **SQLite persistence:** Orders and robots are persisted in `foodie.db`; menu items, beverages, and campus data are read from YAML files.
+Several design decisions were made to give the simulation concrete, implementable form. The campus is represented as a weighted undirected graph with ten nodes — the Food Warehouse, six pathway nodes, two academic buildings, and one dormitory — with bidirectional edges defined in `campus.yml`. Each location is assigned integer grid coordinates to support Manhattan distance calculations. The fleet consists of three robots (R1, R2, R3), each initialized at the Food Warehouse with a full 100% battery charge.
+
+The energy model is intentionally simple but physically motivated: battery consumption is proportional to the Manhattan distance traveled, at a rate of 0.12% per unit distance. Robots are recharged to 100% upon returning to the Food Warehouse. Bag capacity follows the project specification's physical constraints — paper bags hold up to ten items, freezer bags are dedicated to frozen items, and fragile items always begin a new bag with no items added after them. Orders are typed as either `item` orders (processed by FOODIE_BAGGER) or `beverage` orders (processed by FOODIE_SPA), and a robot carries only one order type per delivery run. The beverage knowledge base contains three beverages from `menu.yml` and a fifteen-rule backward-chaining rule base.
+
+Obstacle detection is simulated at the midpoint of any path longer than three nodes, where a blocked edge is injected in both directions and the planner re-routes from that point. When multiple orders are pending, robots are assigned via round-robin for concurrent delivery. Orders and robot state are persisted in a SQLite database (`foodie.db`), while menu items, beverages, and campus graph data are read from YAML configuration files.
 
 ---
 
 ## 3. Requirements Summary
 
+The following table summarizes the four project goals, the AI technique employed for each, and their implementation status.
+
 | Goal | Requirement | AI Technique | Implemented? |
 |------|-------------|--------------|--------------|
-| A | Optimize delivery routes, minimize time and energy, handle obstacles | A* Search | Yes |
+| A | Optimize delivery routes, minimize time and energy, handle obstacles | A\* Search | Yes |
 | B | Rule-based bagging: large → medium → small, frozen/fragile rules | Forward Chaining | Yes |
 | C | Beverage selection for unexpected guests via hypothesis testing | Backward Chaining | Yes |
 | D | Robotic arm loading of bags into compartments | STRIPS Planning | Design only |
 
-Both FOODIE_BAGGER (B) and FOODIE_SPA (C) are fully implemented with rule bases and simulation traces.
+Goals A, B, and C are fully implemented with complete algorithm implementations, rule bases, and simulation traces. Goal D is formalized as a STRIPS planning specification with operators, preconditions, and effect lists, but is not encoded as running software. Both FOODIE_BAGGER (Goal B) and FOODIE_SPA (Goal C) include detailed inference traces that make the reasoning process explicit.
 
 ---
 
@@ -97,20 +90,15 @@ src/
     └── beverage.py    # BEVERAGE_RULES (15 rules) + FALLBACK_BEVERAGE
 ```
 
-### 4.2 Configuration-Driven Design
+### 4.2 Configuration-Driven Design and the Production System Model
 
-All services, features, and error handling are declared in a single `config.yml`. The Tiferet framework uses this configuration to:
+A central design principle of FOODIE is that all services, feature workflows, and error handling are declared declaratively in a single `config.yml` file. The Tiferet framework reads this configuration at startup to wire the dependency injection container, resolve domain events with their required services, and map user-facing operations (such as `robot.bag_order`) to chains of domain event executions.
 
-- **Dependency Injection:** Resolve domain events with their required services at runtime.
-- **Feature Workflows:** Map user-facing operations (e.g., `robot.bag_order`) to domain event chains.
-- **Error Handling:** Define structured error codes with multilingual messages.
+As described in the introduction, this architecture maps onto the classical AI production system model in a direct and intentional way. The repositories — backed by YAML for static knowledge (items, beverages, campus graph) and SQLite for dynamic state (orders, robots) — constitute the working memory of the system. Domain events, each of which encapsulates a single, well-defined state transformation, serve as the operators. The Tiferet feature context, which resolves the correct sequence of events for a given operation and injects their dependencies at runtime, serves as the control strategy. This decomposition means that swapping a different routing algorithm, bagging rule set, or inference engine requires only substituting the concrete utility class behind its service interface — a direct expression of Evans' principle that domain logic should be insulated from infrastructure decisions, and Martin's principle that inner layers should never depend on outer ones.
 
 ### 4.3 Data Flow
 
-1. `App()` loads `config.yml` and initializes the DI container.
-2. `app.run(interface_id, feature_id, data={})` dispatches to the appropriate domain event.
-3. Domain events receive injected services (repositories, utilities) and perform domain logic.
-4. Results are persisted to SQLite (orders, robots) or returned as summary dicts.
+At runtime, `App()` loads `config.yml` and initializes the dependency injection container. A call to `app.run(interface_id, feature_id, data={})` dispatches to the appropriate domain event sequence via the feature context. Each domain event receives its required services — repositories, computational utilities — through constructor injection, performs its domain logic, and persists results back to SQLite or returns a summary dictionary. This unidirectional data flow keeps each component independently testable and ensures that the AI algorithms themselves (A\*, forward chaining, backward chaining) are pure computational utilities with no direct dependency on persistence or configuration infrastructure.
 
 ---
 
@@ -118,75 +106,37 @@ All services, features, and error handling are declared in a single `config.yml`
 
 ### 5.1 Goal A — A\* Search Route Optimization
 
-**File:** `src/utils/route_planner.py` — `AStarRoutePlanner`
+**Implementation:** `src/utils/route_planner.py` — `AStarRoutePlanner`
 
-#### Algorithm
+#### Algorithm Design
 
-A\* search is used to find the shortest path on the campus graph. It combines:
+A\* search is used to find shortest paths on the campus graph. The algorithm combines a true cost function *g(n)* — the cumulative Manhattan distance from the start to node *n* along the path taken so far — with an admissible heuristic *h(n)* that estimates the remaining distance to the goal as the straight-line Manhattan distance |x₁ − x₂| + |y₁ − y₂|. The total estimated cost *f(n) = g(n) + h(n)* determines the order in which nodes are expanded. Because the Manhattan heuristic never overestimates the true remaining distance on a grid-like campus and satisfies the consistency property, A\* is guaranteed to find optimal paths.
 
-- **g(n):** Actual cost from start to node n (cumulative Manhattan distance along edges).
-- **h(n):** Heuristic estimate from node n to the goal (Manhattan distance: |x₁−x₂| + |y₁−y₂|).
-- **f(n) = g(n) + h(n):** Total estimated cost.
-
-The Manhattan distance heuristic is **admissible** (never overestimates) and **consistent** for a grid-like campus layout, guaranteeing optimal paths.
-
-#### Implementation Details
-
-- **Graph representation:** Adjacency list from `campus.yml` with 10 nodes and bidirectional edges.
-- **Priority queue:** Python `heapq` min-heap on f-score.
-- **Edge cost:** Manhattan distance between connected locations.
-- **Obstacle handling:** A set of blocked edge tuples `(from, to)` is maintained. Blocked edges are skipped during neighbor expansion.
+The campus graph is represented as an adjacency list loaded from `campus.yml`, with ten nodes and bidirectional edges weighted by the Manhattan distance between connected locations. The implementation uses Python's `heapq` min-heap to maintain the open set ordered by f-score, and a closed set to prevent re-expansion of already-settled nodes.
 
 #### Obstacle Detection and Replanning
 
-The `detect_and_replan()` method simulates encountering an obstacle mid-route:
+One of the key requirements of the project specification is that the system must handle obstacles not known in advance. FOODIE simulates this via the `detect_and_replan()` method. When a planned path contains more than three nodes, an obstacle is injected at the midpoint edge, blocking that edge in both directions. The planner then re-invokes A\* from the obstacle point to the original goal, using the updated blocked-edge set. The new tail segment is spliced onto the original prefix, and the total distance is recomputed. This approach demonstrates dynamic replanning without requiring a full restart from the origin, which is both more efficient and more realistic as a model of en-route obstacle avoidance.
 
-1. If the path has more than 3 nodes, an obstacle is injected at the midpoint edge.
-2. The edge is blocked in both directions.
-3. A\* re-searches from the obstacle point to the goal.
-4. The new tail is spliced onto the original prefix, and total distance is recomputed.
+#### Energy Management and Emergency Return
 
-This demonstrates the system's ability to handle unknown obstacles dynamically, as required by the project specification.
-
-#### Energy Optimization
-
-Each robot tracks battery level. Energy consumption is proportional to distance traveled (0.12% per unit). The system checks for low battery (≤20%) and returns the robot to FW for recharging before the next dispatch.
-
-#### Fleet Dispatch
-
-The `DispatchFleet` event assigns pending orders to robots via round-robin and plans individual A\* routes for each. Multiple robots operate concurrently, each with independent path planning and obstacle handling.
+Each robot maintains a battery level that decreases proportionally to the distance traveled, at a rate of 0.12% per unit distance. The `Robot` domain model exposes an `is_low_battery()` method with a threshold of 20%. The `PlanRoute` event checks this threshold immediately after simulating energy consumption for the final planned path — whether that path was the original A\* route or a replanned route following obstacle detection. If the threshold is breached, the event aborts the delivery: it plans an emergency return route to the Food Warehouse using the same planner and campus graph already loaded in the event, consumes the return leg energy, updates the robot's location to FW, and returns a `'low_battery_return'` status instead of `'complete'`. The order remains in `'bagged'` status for re-dispatch once the robot is recharged. If battery remains above the threshold, the event proceeds normally and the robot is updated to the delivery destination.
 
 ### 5.2 Goal B — FOODIE_BAGGER (Forward Chaining)
 
-**File:** `src/utils/bagger.py` — `ForwardChainBagger`
+**Implementation:** `src/utils/bagger.py` — `ForwardChainBagger`
 
 #### Production System Design
 
-FOODIE_BAGGER is a forward-chaining production system that decides how to bag each item in an order. The working memory contains the list of items (expanded by quantity) and the current bag state. Rules fire in priority order based on item attributes.
+FOODIE_BAGGER is a forward-chaining production system that decides how each item in an order should be placed into bags. The working memory consists of the item list — expanded to individual units by quantity — and the current bag state. Rules are evaluated in a fixed priority order, and the first matching rule fires for each item. This data-driven, condition-action structure is the defining characteristic of a forward-chaining production system: the system starts from the current state of the world and applies rules until the goal state (all items bagged) is reached.
 
 #### Rule Base
 
-The rules fire in this priority sequence:
+The rule base encodes practical bagging knowledge that mirrors real-world grocery bagging heuristics. Items are sorted from largest to smallest before processing, ensuring that heavy items are placed at the bottom of bags and that the bagging sequence proceeds in a physically sensible order.
 
-| Rule | Condition | Action |
-|------|-----------|--------|
-| R-Phase | Item size changes (large→medium→small) | Announce new bagging phase |
-| R-Frozen | Item is frozen | Create a new freezer bag; place item |
-| R-Fragile | Item is fragile | Start a new paper bag; place item; force new bag after |
-| R-NewBag | No current bag OR current bag is full (≥10 items) | Start a new paper bag |
-| R-Add | Current bag has capacity and item is not special | Add item to current bag |
+The rules fire in the following priority sequence. The phase rule (R-Phase) detects when the item size category changes — from large to medium to small — and announces a new bagging phase. The frozen rule (R-Frozen) fires for any frozen item, placing it in a dedicated freezer bag to maintain temperature isolation; each frozen item receives its own freezer bag. The fragile rule (R-Fragile) fires for fragile items, starting a new paper bag for the item and forcing a new bag for any subsequent item, ensuring that nothing is placed on top of a fragile item. When no current bag exists or the current bag has reached its ten-item capacity, the new-bag rule (R-NewBag) opens a fresh paper bag. Finally, the add rule (R-Add) places any ordinary, non-special item into the current bag.
 
-#### Key Bagging Rules in Detail
-
-1. **Size-priority sorting:** Items are sorted large → medium → small before processing. This ensures heavy/large items are bagged first (bottom of bags), matching real-world bagging practice.
-
-2. **Frozen items:** Always placed in a dedicated freezer bag. Each frozen item gets its own freezer bag to maintain temperature isolation.
-
-3. **Fragile items:** Always start a new bag. No additional items are placed after a fragile item in the same bag, preventing crushing. This satisfies the project requirement that "fragile items do not get crushed in a bag."
-
-4. **Capacity limit:** Paper bags hold a maximum of 10 items. When full, a new bag is started.
-
-5. **Trace output:** Every rule firing produces a trace line (e.g., `Rule R3 says: Put 1-gallon water bottle in bag_1.`), matching the project specification format.
+Every rule firing produces a trace line in the format `Rule Rn says: <action>`, satisfying the project specification's requirement for an explicit, human-readable reasoning trace.
 
 #### Sample Trace
 
@@ -205,49 +155,20 @@ Rule R8 says:   Put loaf of bread in bag_4.
 
 ### 5.3 Goal C — FOODIE_SPA (Backward Chaining)
 
-**File:** `src/utils/backward_chain_selector.py` — `BackwardChainSelector`
+**Implementation:** `src/utils/backward_chain_selector.py` — `BackwardChainSelector`
 **Rule Base:** `src/assets/beverage.py` — `BEVERAGE_RULES`
 
 #### Backward Chaining Design
 
-FOODIE_SPA uses a goal-driven backward-chaining inference engine. Given a hypothesis (e.g., "shall I serve Carrot Juice?"), the engine chains backward through the rule base, checking conditions against known guest facts and recursing into sub-goals as needed.
+FOODIE_SPA uses a goal-driven backward-chaining inference engine to select a beverage for an unexpected guest. Rather than starting from known facts and deriving conclusions (as forward chaining does), FOODIE_SPA begins with a hypothesis — "shall I serve Carrot Juice?" — and works backward through the rule base, attempting to establish the conditions that would make that hypothesis true. This makes backward chaining particularly well-suited to selection problems, where the space of possible conclusions is small and known in advance.
+
+The inference engine iterates over each candidate beverage from the knowledge base. For each candidate, it searches for rules whose conclusion matches `CHOOSE <beverage_name>`. For each such rule, all conditions are checked in turn. When a condition references an intermediate conclusion (such as `JUICE is indicated`), the engine recurses to establish that sub-goal before continuing. If a condition is a simple fact, it is checked against the known guest facts dictionary. The first candidate whose `CHOOSE` conclusion can be fully established by the rule base is selected and returned. If no candidate succeeds, the system falls back to Sparkling Water as a universal default.
 
 #### Rule Base (15 Rules)
 
-**Level 1 — Category Rules (establish intermediate conclusions):**
+The rule base is organized into two levels. The first level contains category rules that establish intermediate conclusions about beverage categories from guest facts. For example, Rule R1 concludes that LIQUOR is indicated when the occasion is a celebration and the guest is an adult. Rule R8 concludes that JUICE is indicated whenever the guest is a health nut. Rule R11 concludes that WATER is indicated for a minor.
 
-| ID | Conclusion | Conditions |
-|----|-----------|------------|
-| R1 | LIQUOR is indicated | occasion=celebration, guest_age=adult |
-| R3 | BEER is indicated | occasion=casual, guest_age=adult |
-| R6 | WINE is indicated | entree=steak, guest_age=adult |
-| R7 | WINE is indicated | entree=chicken, guest_age=adult |
-| R8 | JUICE is indicated | health_nut=True |
-| R11 | WATER is indicated | guest_age=minor |
-
-**Level 2 — Selection Rules (establish CHOOSE conclusions):**
-
-| ID | Conclusion | Conditions |
-|----|-----------|------------|
-| R2 | CHOOSE Polish Vodka | LIQUOR is indicated, formality=formal |
-| R4 | CHOOSE Dos Equis | BEER is indicated |
-| R5 | CHOOSE Corona Beer | BEER is indicated, setting=outdoor |
-| R9 | CHOOSE Carrot Juice | JUICE is indicated, allergies_citrus=True |
-| R10 | CHOOSE Orange Juice | JUICE is indicated, allergies_citrus=False |
-| R12 | CHOOSE Sparkling Water | WATER is indicated, formality=formal |
-| R13 | CHOOSE Cheap Beer | guest_liked=False, guest_age=adult |
-| R14 | CHOOSE Champagne | occasion=new_years_eve, guest_age=adult |
-| R15 | CHOOSE Sparkling Water | (universal fallback — no conditions) |
-
-#### Inference Engine Operation
-
-1. Each candidate beverage from the knowledge base is tested as a hypothesis.
-2. For each candidate, the engine finds rules whose conclusion matches `CHOOSE <beverage_name>`.
-3. For each matching rule, all conditions are checked:
-   - If a condition references an intermediate conclusion (e.g., `JUICE is indicated`), the engine **recurses** to establish that sub-goal.
-   - If a condition is a simple fact, it is checked against the known guest facts.
-4. The first candidate whose CHOOSE conclusion can be fully established is selected.
-5. If no rule fires for any candidate, the system falls back to Sparkling Water.
+The second level contains selection rules that translate category conclusions into specific `CHOOSE` conclusions. Rule R9 concludes `CHOOSE Carrot Juice` when JUICE is indicated and the guest has a citrus allergy, while Rule R10 concludes `CHOOSE Orange Juice` when JUICE is indicated and no citrus allergy is present. Rule R5 concludes `CHOOSE Corona Beer` when BEER is indicated and the setting is outdoor. Rule R15 serves as an unconditional fallback that concludes `CHOOSE Sparkling Water` regardless of guest facts, guaranteeing that the system always returns a result.
 
 #### Sample Trace
 
@@ -277,7 +198,7 @@ Backward chaining successful -> beverage selected.
 
 ### 6.1 Overview
 
-This section describes how a robot's robotic arm would load bags into its compartment using STRIPS-style planning operators. This component is designed but not encoded.
+Goal D specifies the use of STRIPS-style planning operators to model how a robot's robotic arm loads bagged items into its delivery compartment. While this component is not encoded as running software, the formal specification below demonstrates how the state transitions involved in physical loading would be represented within a STRIPS planning framework. The design integrates naturally with the bagging output from FOODIE_BAGGER, using the bag manifest produced by Goal B as the initial state for the loading plan.
 
 ### 6.2 State Representation
 
@@ -361,9 +282,7 @@ MARK_ORDER_COMPLETE(order, robot)
 
 ### 6.4 Loading Sequence for a Typical Order
 
-**Initial state:** 4 bags on the belt (bag_1: large items, freezer_bag_2: ice cream, bag_3: granola box, bag_4: bread), arm empty, compartment closed.
-
-**Plan:**
+Consider the output of FOODIE_BAGGER for the demo order: four bags on the packing belt (bag_1 containing large items, freezer_bag_2 containing ice cream, bag_3 containing a fragile granola box, and bag_4 containing bread). The robot arm is empty and the compartment is closed. The STRIPS planner would generate the following loading sequence, observing the constraint that frozen items are loaded first (bottom of compartment) and fragile items are loaded last (top, not crushed):
 
 1. `OPEN_COMPARTMENT(R1)`
 2. `PICK_UP_BAG(freezer_bag_2)` — frozen items loaded first (bottom)
@@ -379,7 +298,7 @@ MARK_ORDER_COMPLETE(order, robot)
 
 ### 6.5 Handling Last-Minute Changes (Unexpected Guests)
 
-When guests arrive unexpectedly and a beverage must be added to an existing order:
+When a guest arrives unexpectedly and a beverage must be added to an order that has already been loaded, two additional operators are required.
 
 #### Operator: REOPEN_COMPARTMENT
 
@@ -408,11 +327,11 @@ LOAD_BEVERAGE_BAG(bev_bag, robot)
     at(bev_bag, arm)
 ```
 
-**Modified plan for last-minute beverage addition:**
+The modified loading plan for a last-minute beverage addition then proceeds as follows:
 
-1. `REOPEN_COMPARTMENT(R1)` — reopens, invalidates order_complete
-2. `PICK_UP_BAG(bev_bag_ORD-101)` — beverage bag from FOODIE_SPA
-3. `LOAD_BEVERAGE_BAG(bev_bag_ORD-101, R1)` — load on top (accessible first)
+1. `REOPEN_COMPARTMENT(R1)` — reopens compartment, invalidating `order_complete`
+2. `PICK_UP_BAG(bev_bag_ORD-101)` — beverage bag produced by FOODIE_SPA
+3. `LOAD_BEVERAGE_BAG(bev_bag_ORD-101, R1)` — load on top for easy access at destination
 4. `CLOSE_COMPARTMENT(R1)`
 5. `MARK_ORDER_COMPLETE(ORD-101, R1)`
 
@@ -420,7 +339,7 @@ LOAD_BEVERAGE_BAG(bev_bag, robot)
 
 ## 7. Campus Terrain Graph
 
-The campus is modeled in `campus.yml` with 10 locations:
+The campus is modeled in `campus.yml` as a weighted undirected graph with ten locations. The Food Warehouse at coordinates (0, 0) serves as the origin and terminus for all robot routes. Six pathway nodes represent the navigable corridors between locations, while two buildings and one dormitory serve as delivery destinations.
 
 ```
 Node             Coordinates    Notes
@@ -437,7 +356,7 @@ Building_B       (6, 3)         Delivery destination
 Dorm_1           (0, 5)         Delivery destination
 ```
 
-Edges (bidirectional):
+The edges of the graph are bidirectional and their weights are computed as the Manhattan distance between connected node coordinates:
 
 ```
 FW ↔ Pathway_1, Pathway_6
@@ -455,15 +374,17 @@ Pathway_6 ↔ Dorm_1
 
 ### Tools Used
 
-- **Warp AI (Oz Agent):** Used extensively for iterative design collaboration, code generation, code review, testing, and documentation within the Warp terminal IDE.
+All AI-assisted development in this project was conducted using **Warp AI (Oz Agent)**, an agentic development assistant integrated into the Warp terminal IDE. The agent was used throughout the project lifecycle for iterative design collaboration, code generation, code review, test authoring, and documentation.
 
 ### AI-Assisted Components
+
+The following table summarizes the level of AI involvement in each major system component.
 
 | Component | Level of AI Assistance |
 |-----------|----------------------|
 | System architecture and DDD layering | Collaborative design — AI proposed structure, human refined |
 | Domain models (Pydantic v2) | AI-generated from specifications, human-reviewed |
-| A* route planner implementation | AI-generated core algorithm, human-specified heuristic and obstacle logic |
+| A\* route planner implementation | AI-generated core algorithm, human-specified heuristic and obstacle logic |
 | Forward-chaining bagger | Collaborative — human specified rules, AI implemented production system |
 | Backward-chaining selector | Collaborative — human designed rule base, AI implemented inference engine |
 | Rule bases (both B and C) | Human-designed rule logic, AI structured into code |
@@ -475,15 +396,7 @@ Pathway_6 ↔ Dorm_1
 
 ### Iteration Process
 
-Development followed an iterative TRD-driven workflow:
-
-1. **Requirements definition:** Human wrote Technical Requirements Documents (TRDs) for each component, with AI helping to refine scope and acceptance criteria.
-2. **Implementation:** AI generated initial code from TRDs, following Tiferet's structured code style (artifact comments, RST docstrings, Pydantic v2 patterns).
-3. **Review and refinement:** Human reviewed all generated code, requested modifications, and approved final implementations.
-4. **Testing:** AI generated test suites; human verified coverage and edge cases.
-5. **Integration:** AI orchestrated feature integration; human validated end-to-end simulation output.
-
-Each major component was implemented as a GitHub issue with a feature branch, pull request, and collaboration report documenting the AI ↔ human interaction.
+Development followed an iterative, TRD-driven workflow in which a Technical Requirements Document (TRD) was authored for each component before implementation began. The human collaborator wrote the initial requirements and acceptance criteria; the AI agent helped to refine the scope and generated initial code from the TRD following Tiferet's structured code style (artifact comments, RST docstrings, Pydantic v2 patterns). The human then reviewed all generated code, requested modifications, and approved final implementations before they were merged. AI-generated test suites were similarly reviewed and supplemented with human-specified edge cases. Integration was validated through end-to-end simulation output reviewed by the human collaborator. Each major component was implemented as a GitHub issue with a dedicated feature branch, pull request, and a published collaboration report documenting the AI–human interaction at each decision point.
 
 ---
 
@@ -491,8 +404,7 @@ Each major component was implemented as a GitHub issue with a feature branch, pu
 
 ### Prerequisites
 
-- Python ≥ 3.10
-- pip (Python package manager)
+Python 3.10 or later and `pip` are required. All Python package dependencies are listed in `requirements.txt`.
 
 ### Setup
 
@@ -516,13 +428,7 @@ pip install -r requirements.txt
 python foodie.py
 ```
 
-This executes all three goals sequentially:
-1. Seeds the database with robots.
-2. **Order Placement:** Places an item order (ORD-101) and two beverage orders (ORD-102, ORD-103).
-3. **Goal B:** Bags order ORD-101 using forward chaining.
-4. **Goal A:** Plans and executes A* route for R1 to Building_A, delivers, returns, recharges.
-5. **Goal C:** Selects beverages for two scenarios using backward chaining.
-6. **Goal A:** Routes R2 and R3 to deliver beverage orders.
+This executes all three implemented goals sequentially. First, the database is seeded with the robot fleet. An item order (ORD-101) and two beverage orders (ORD-102, ORD-103) are then placed. Goal B runs next, bagging ORD-101 via forward chaining and assigning the bags to Robot R1. Goal A then plans and executes an A\* route for R1 to Building_A, delivers the order, returns to the Food Warehouse, and recharges. Goal C follows, selecting beverages for two distinct guest scenarios using backward chaining. Finally, Goal A routes R2 and R3 to deliver the beverage orders to their destinations.
 
 ### Running Individual Features via CLI
 
