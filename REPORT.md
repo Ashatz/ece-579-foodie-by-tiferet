@@ -1,8 +1,42 @@
 # FOODIE — Food Intelligence Electrified
 
 **Course:** ECE 479/579 — Fundamentals of AI, Spring 2026
-**Author:** Alex Shatz
+**Author:** Andrew J. Shatz
 **Date:** May 8, 2026
+
+---
+
+## Table of Contents
+1. [Introduction](#1-introduction)
+2. [Assumptions](#2-assumptions)
+   - [Instructor's Assumptions (Adopted)](#instructors-assumptions-adopted)
+   - [Additional Assumptions (Our Refinements)](#additional-assumptions-our-refinements)
+3. [Requirements Summary](#3-requirements-summary)
+4. [System Architecture](#4-system-architecture)
+   - [4.1 High-Level Design](#41-high-level-design)
+   - [4.2 Configuration-Driven Design and the Production System Model](#42-configuration-driven-design-and-the-production-system-model)
+   - [4.3 Data Flow](#43-data-flow)
+5. [Algorithms and Methods](#5-algorithms-and-methods)
+   - [5.1 Goal A — A\* Search Route Optimization](#51-goal-a--a-search-route-optimization)
+   - [5.2 Goal B — FOODIE_BAGGER (Forward Chaining)](#52-goal-b--foodie_bagger-forward-chaining)
+   - [5.3 Goal C — FOODIE_SPA (Backward Chaining)](#53-goal-c--foodie_spa-backward-chaining)
+6. [Goal D — STRIPS Rules for Robotic Arm Loading](#6-goal-d--strips-rules-for-robotic-arm-loading)
+   - [6.1 Overview](#61-overview)
+   - [6.2 State Representation](#62-state-representation)
+   - [6.3 STRIPS Operators](#63-strips-operators)
+   - [6.4 Loading Sequence for a Typical Order](#64-loading-sequence-for-a-typical-order)
+   - [6.5 Handling Last-Minute Changes (Unexpected Guests)](#65-handling-last-minute-changes-unexpected-guests)
+7. [Campus Terrain Graph](#7-campus-terrain-graph)
+8. [Use of AI Tools](#8-use-of-ai-tools)
+9. [Instructions to Run the System](#9-instructions-to-run-the-system)
+   - [Prerequisites](#prerequisites)
+   - [Setup](#setup)
+   - [Running the Demo](#running-the-demo)
+   - [Running Individual Features via CLI](#running-individual-features-via-cli)
+   - [Running Tests](#running-tests)
+- [Appendix A — Sample Run: Goal A](#appendix-a--sample-run-goal-a-a-route-planning)
+- [Appendix B — Sample Run: Goal B](#appendix-b--sample-run-goal-b-foodie_bagger-forward-chaining)
+- [Appendix C — Sample Run: Goal C](#appendix-c--sample-run-goal-c-foodie_spa-backward-chaining)
 
 ---
 
