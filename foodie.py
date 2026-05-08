@@ -154,6 +154,15 @@ if __name__ == '__main__':
         order_id='ORD-103',
     ))
 
+    # ======================================================================
+    # FLEET STATUS — View Fleet
+    # ======================================================================
+    print('\n' + '=' * 70)
+    print('FLEET STATUS — Real-Time Robot Status')
+    print('=' * 70)
+
+    app.run('foodie', 'robot.view_fleet')
+
     print('\n' + '=' * 70)
     print('FOODIE Demo Complete')
     print('=' * 70)

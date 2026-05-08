@@ -23,7 +23,7 @@ from ...mappers.robot import RobotAggregate
 from ...mappers.bag import BagAggregate
 from ..robot import (
     BagOrder, PlanRoute, DeliverOrder,
-    ReturnToWarehouse, ChargeRobot, DispatchFleet,
+    ReturnToWarehouse, ChargeRobot, ViewFleet,
 )
 
 # *** constants
@@ -700,79 +700,69 @@ def test_charge_robot_not_at_warehouse(mock_robot_service):
     assert exc_info.value.error_code == 'ROBOT_NOT_AT_WAREHOUSE'
 
 
-# *** dispatch_fleet tests
+# *** view_fleet tests
 
-# ** test: dispatch_fleet_success
-def test_dispatch_fleet_success(
-    mock_robot_service, mock_order_service,
-    mock_route_planner, mock_location_service, sample_bags,
-):
+# ** test: view_fleet_success
+def test_view_fleet_success(mock_robot_service, sample_bags):
     '''
-    Test successful fleet dispatch with round-robin assignment.
+    Test that ViewFleet loads all robots, prints their status, and
+    returns a correctly structured payload without mutating any state.
+
+    :param mock_robot_service: The mock robot service.
+    :type mock_robot_service: RobotService
+    :param sample_bags: Sample bags used to give robots non-empty compartments.
+    :type sample_bags: list
     '''
 
-    # Two robots with bags.
-    r1 = RobotAggregate(robot_id='R1', current_location=FOOD_WAREHOUSE)
-    r2 = RobotAggregate(robot_id='R2', current_location=FOOD_WAREHOUSE)
+    # Two robots at different locations with varying state.
+    r1 = RobotAggregate(robot_id='R1', current_location=FOOD_WAREHOUSE, battery_level=100.0)
+    r2 = RobotAggregate(robot_id='R2', current_location=BUILDING_A, battery_level=85.0)
     for bag in sample_bags:
-        r1.load_bag(bag)
         r2.load_bag(bag)
     mock_robot_service.list.return_value = [r1, r2]
 
-    # Two bagged orders.
-    mock_order_service.list.return_value = [
-        Order(order_id='ORD-101', destination='Building_A', status='bagged'),
-        Order(order_id='ORD-102', destination='Building_A', status='bagged'),
-    ]
+    deps = {'robot_service': mock_robot_service}
 
-    deps = {
-        'robot_service': mock_robot_service,
-        'order_service': mock_order_service,
-        'route_planner': mock_route_planner,
-        'location_service': mock_location_service,
-    }
+    # Execute the event.
+    result = DomainEvent.handle(ViewFleet, dependencies=deps)
 
-    result = DomainEvent.handle(
-        DispatchFleet,
-        dependencies=deps,
-    )
+    # Verify payload structure.
+    assert result['robot_count'] == 2
+    assert len(result['robots']) == 2
 
-    assert result['status'] == 'complete'
-    assert result['routes_planned'] == 2
-    assert result['total_distance'] == 26.0  # 13.0 * 2
+    # Verify per-robot fields.
+    r1_data = next(r for r in result['robots'] if r['robot_id'] == 'R1')
+    assert r1_data['location'] == 'FW'
+    assert r1_data['battery_level'] == 100.0
+    assert r1_data['status'] == 'idle'
+    assert r1_data['bags'] == 0
 
-    # Verify robot_service.save called for each robot.
-    assert mock_robot_service.save.call_count == 2
+    r2_data = next(r for r in result['robots'] if r['robot_id'] == 'R2')
+    assert r2_data['location'] == 'Building_A'
+    assert r2_data['battery_level'] == 85.0
+    assert r2_data['bags'] == 2
+
+    # Verify the event is truly read-only — save must never be called.
+    mock_robot_service.save.assert_not_called()
 
 
-# ** test: dispatch_fleet_robot_no_bags
-def test_dispatch_fleet_robot_no_bags(
-    mock_robot_service, mock_order_service,
-    mock_route_planner, mock_location_service,
-):
+# ** test: view_fleet_empty
+def test_view_fleet_empty(mock_robot_service):
     '''
-    Test that dispatch fails if an assigned robot has no bags.
+    Test that ViewFleet handles an empty fleet gracefully, returning
+    robot_count of 0 and an empty robots list.
+
+    :param mock_robot_service: The mock robot service.
+    :type mock_robot_service: RobotService
     '''
 
-    # Robot with no bags.
-    r1 = RobotAggregate(robot_id='R1', current_location=FOOD_WAREHOUSE)
-    mock_robot_service.list.return_value = [r1]
+    # No robots in fleet.
+    mock_robot_service.list.return_value = []
 
-    mock_order_service.list.return_value = [
-        Order(order_id='ORD-101', destination='Building_A', status='bagged'),
-    ]
+    deps = {'robot_service': mock_robot_service}
 
-    deps = {
-        'robot_service': mock_robot_service,
-        'order_service': mock_order_service,
-        'route_planner': mock_route_planner,
-        'location_service': mock_location_service,
-    }
+    result = DomainEvent.handle(ViewFleet, dependencies=deps)
 
-    with pytest.raises(TiferetError) as exc_info:
-        DomainEvent.handle(
-            DispatchFleet,
-            dependencies=deps,
-        )
-
-    assert exc_info.value.error_code == 'ROBOT_NO_BAGS'
+    assert result['robot_count'] == 0
+    assert result['robots'] == []
+    mock_robot_service.save.assert_not_called()
