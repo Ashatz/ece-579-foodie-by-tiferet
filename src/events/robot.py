@@ -302,15 +302,54 @@ class PlanRoute(DomainEvent):
             print(f'  Replanned route: {" -> ".join(new_path)} (dist: {new_dist:.1f})')
             path, distance = new_path, new_dist
 
-        # Simulate energy consumption and update robot.
+        # Print route summary before energy consumption.
+        print(f'  Route: {" -> ".join(path)} (dist: {distance:.1f})')
+
+        # Simulate energy consumption for the route taken.
         robot.consume_energy(distance)
+
+        # Check for low battery after route consumption.
+        if robot.is_low_battery():
+
+            # Find the Food Warehouse in the campus graph.
+            fw_name = next(name for name, loc in loc_map.items() if loc.is_food_warehouse)
+
+            # Print emergency return trace.
+            print(f'  \u26a0 Robot {robot_id} low battery ({robot.battery_level:.1f}%) — aborting delivery, returning to FW.')
+
+            # Plan emergency return route to the Food Warehouse.
+            return_path, return_distance = self.route_planner.find_path(
+                goal, fw_name, loc_map, edges, obstacles,
+            )
+
+            # Consume return leg energy if a path exists.
+            if return_path is not None:
+                robot.consume_energy(return_distance)
+
+            # Update robot to Food Warehouse and persist.
+            robot.current_location = loc_map[fw_name]
+            robot.status = 'idle'
+            self.robot_service.save(robot)
+
+            # Print return confirmation.
+            print(f'  Robot {robot_id} returned to FW for emergency recharge, battery: {robot.battery_level:.1f}%')
+
+            # Return low battery result; order remains bagged for re-dispatch.
+            return {
+                'robot_id': robot_id,
+                'order_id': order_id,
+                'path': path,
+                'distance': distance,
+                'return_path': return_path,
+                'return_distance': return_distance if return_path else 0.0,
+                'status': 'low_battery_return',
+            }
+
+        # Normal path: update robot to delivery destination and persist.
+        print(f'  Robot {robot_id} battery: {robot.battery_level:.1f}%')
         robot.status = 'en_route'
         robot.current_location = loc_map[goal]
         self.robot_service.save(robot)
-
-        # Print route summary.
-        print(f'  Route: {" -> ".join(path)} (dist: {distance:.1f})')
-        print(f'  Robot {robot_id} battery: {robot.battery_level:.1f}%')
 
         # Return the summary.
         return {
