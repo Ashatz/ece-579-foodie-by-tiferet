@@ -14,9 +14,9 @@ from .robot import (
     BagOrder,
     ChargeRobot,
     DeliverOrder,
-    DispatchFleet,
     PlanRoute,
     ReturnToWarehouse,
+    ViewFleet,
 )
 
 # *** exports
@@ -25,9 +25,9 @@ __all__ = [
     'BagOrder',
     'ChargeRobot',
     'DeliverOrder',
-    'DispatchFleet',
     'PlanRoute',
     'ReturnToWarehouse',
     'SeedDatabase',
     'SelectBeverage',
+    'ViewFleet',
 ]

@@ -26,9 +26,9 @@ services:
   charge_robot_evt:
     module_path: src.events.robot
     class_name: ChargeRobot
-  dispatch_fleet_evt:
+  view_fleet_evt:
     module_path: src.events.robot
-    class_name: DispatchFleet
+    class_name: ViewFleet
   select_beverage_evt:
     module_path: src.events.order
     class_name: SelectBeverage
@@ -114,12 +114,12 @@ features:
       commands:
         - service_id: charge_robot_evt
           name: Charge robot battery
-    dispatch_fleet:
-      name: Dispatch Fleet
-      description: Round-robin fleet dispatch with A* routing (Goal A)
+    view_fleet:
+      name: View Fleet
+      description: Display real-time status for all robots in the fleet
       commands:
-        - service_id: dispatch_fleet_evt
-          name: Dispatch fleet routes
+        - service_id: view_fleet_evt
+          name: Print fleet status
   order:
     new_item:
       name: New Item Order
@@ -204,11 +204,11 @@ cli:
           - name_or_flags:
               - robot_id
             description: The robot to charge.
-      dispatch-fleet:
+      view-fleet:
         group_key: robot
-        key: dispatch-fleet
-        name: Dispatch Fleet Command
-        description: Round-robin fleet dispatch with A* routing.
+        key: view-fleet
+        name: View Fleet Command
+        description: Display real-time status for all robots in the fleet.
         args: []
     order:
       new-item:

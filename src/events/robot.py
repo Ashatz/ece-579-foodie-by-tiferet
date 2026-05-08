@@ -655,153 +655,62 @@ class ChargeRobot(DomainEvent):
         }
 
 
-# ** event: dispatch_fleet
-class DispatchFleet(DomainEvent):
+# ** event: view_fleet
+class ViewFleet(DomainEvent):
     '''
-    Fleet-level round-robin route dispatch (Goal A — Route Optimization).
+    Display real-time status for all robots in the fleet.
 
-    Loads all robots and bagged orders, assigns orders to robots via
-    round-robin, and plans individual A* routes for each assignment.
-    Each robot must have bags loaded or the dispatch fails.
+    Loads all robots from the robot service and prints a formatted
+    status trace for each. Returns a structured payload suitable for
+    CLI display or programmatic inspection. This event is read-only
+    and does not modify any domain state.
     '''
 
     # * attribute: robot_service
     robot_service: RobotService
 
-    # * attribute: order_service
-    order_service: OrderService
-
-    # * attribute: route_planner
-    route_planner: RoutePlannerService
-
-    # * attribute: location_service
-    location_service: LocationService
-
     # * init
-    def __init__(self,
-            robot_service: RobotService,
-            order_service: OrderService,
-            route_planner: RoutePlannerService,
-            location_service: LocationService,
-        ):
+    def __init__(self, robot_service: RobotService):
         '''
-        Initialize the DispatchFleet event.
+        Initialize the ViewFleet event.
 
-        :param robot_service: Service for loading and saving robots.
+        :param robot_service: Service for loading robots.
         :type robot_service: RobotService
-        :param order_service: Service for loading orders.
-        :type order_service: OrderService
-        :param route_planner: Service for A* search and replanning.
-        :type route_planner: RoutePlannerService
-        :param location_service: Service for loading campus graph data.
-        :type location_service: LocationService
         '''
 
-        # Set the service dependencies.
+        # Set the service dependency.
         self.robot_service = robot_service
-        self.order_service = order_service
-        self.route_planner = route_planner
-        self.location_service = location_service
 
     # * method: execute
     def execute(self, **kwargs) -> Dict[str, Any]:
         '''
-        Dispatch the fleet with round-robin order assignment.
+        Load all robots and print their current status.
 
-        :param kwargs: Optional 'obstacles' set of blocked edge tuples.
+        :param kwargs: Additional keyword arguments (unused).
         :type kwargs: dict
-        :return: Summary dict with fleet route details.
+        :return: Structured payload with robot_count and per-robot status.
         :rtype: Dict[str, Any]
         '''
 
-        # Load fleet and bagged orders.
+        # Load the full fleet.
         robots = self.robot_service.list()
-        orders = [o for o in self.order_service.list() if o.status == 'bagged']
 
-        # Build the campus graph once.
-        locations = self.location_service.list()
-        edges = self.location_service.get_edges()
-        loc_map = {
-            loc.name: LocationAggregate(**loc.model_dump())
-            for loc in locations
-        }
-
-        # Initialize obstacles.
-        obstacles: Set[Tuple[str, str]] = kwargs.get('obstacles', set())
-
-        # Route each order via round-robin robot assignment.
-        total_distance = 0.0
-        details = []
-
-        for i, order in enumerate(orders):
-
-            # Round-robin assignment.
-            robot = robots[i % len(robots)]
-            start = robot.current_location.name
-            goal = order.destination
-
-            print(f'\n  [{i+1}/{len(orders)}] Robot {robot.robot_id}: {start} -> {goal} ({order.order_id})')
-
-            # Verify the robot has bags.
-            self.verify(
-                expression=len(robot.compartments) > 0,
-                error_code='ROBOT_NO_BAGS',
-                robot_id=robot.robot_id,
-            )
-
-            # Plan the A* route.
-            path, distance = self.route_planner.find_path(
-                start, goal, loc_map, edges, obstacles,
-            )
-
-            # Handle no path.
-            if path is None:
-                print(f'    No path found.')
-                details.append({
-                    'robot_id': robot.robot_id,
-                    'order_id': order.order_id,
-                    'path': None,
-                    'distance': 0.0,
-                    'status': 'no_path',
-                })
-                continue
-
-            # Attempt obstacle detection and replanning.
-            new_path, new_dist, obstacles = self.route_planner.detect_and_replan(
-                path, goal, loc_map, edges, obstacles,
-            )
-            if new_path is not None:
-                print(f'    Replanned: {" -> ".join(new_path)} (dist: {new_dist:.1f})')
-                path, distance = new_path, new_dist
-
-            # Simulate energy consumption and update robot.
-            robot.consume_energy(distance)
-            robot.status = 'en_route'
-            robot.current_location = loc_map[goal]
-            self.robot_service.save(robot)
-
-            total_distance += distance
-
-            print(f'    Route: {" -> ".join(path)} (dist: {distance:.1f})')
-            print(f'    Battery: {robot.battery_level:.1f}%')
-
-            details.append({
-                'robot_id': robot.robot_id,
-                'order_id': order.order_id,
-                'path': path,
-                'distance': distance,
-                'status': 'complete',
-            })
-
-        # Print fleet status.
-        print(f'\n  Fleet status:')
+        # Print fleet status header and per-robot trace.
+        print('  Fleet Status:')
         for robot in robots:
             print(f'    {robot.format_for_trace()}')
 
-        # Return the summary.
+        # Return structured status payload.
         return {
-            'total_distance': total_distance,
-            'routes_planned': len(details),
-            'details': details,
-            'status': 'complete',
+            'robot_count': len(robots),
+            'robots': [
+                {
+                    'robot_id': r.robot_id,
+                    'location': r.current_location.name,
+                    'battery_level': r.battery_level,
+                    'status': r.status,
+                    'bags': len(r.compartments),
+                }
+                for r in robots
+            ],
         }

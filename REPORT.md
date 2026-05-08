@@ -69,7 +69,7 @@ src/
 │   └── beverage.py    # Beverage (type, brand, health/allergy matching)
 ├── events/            # Domain events — orchestrate business logic
 │   ├── migrate.py     # SeedDatabase (robots only)
-│   ├── robot.py       # BagOrder, PlanRoute, DeliverOrder, ReturnToWarehouse, ChargeRobot, DispatchFleet
+│   ├── robot.py       # BagOrder, PlanRoute, DeliverOrder, ReturnToWarehouse, ChargeRobot, ViewFleet
 │   └── order.py       # PlaceItemOrder, PlaceBeverageOrder, SelectBeverage
 ├── interfaces/        # Service ABCs (contracts)
 │   ├── item.py        # ItemService

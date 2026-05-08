@@ -4,7 +4,7 @@
 
 The robot lifecycle events in `src/events/robot.py` model the complete delivery cycle: **bag → route → deliver → return → charge**. Each event enforces domain rules about the robot's state (location, bags, battery) and operates on a per-robot basis.
 
-The `DispatchFleet` event provides fleet-level orchestration via round-robin assignment.
+`ViewFleet` provides a read-only real-time status display of the entire fleet.
 
 **Module:** `src/events/robot.py`
 
@@ -35,10 +35,12 @@ Plan an A* route for a loaded robot to an order's destination.
 1. Build campus graph from `LocationService`
 2. A* search from robot's current location to order destination
 3. Attempt obstacle detection and replanning
-4. Simulate energy consumption, update robot location to destination
-5. Set robot status to `'en_route'`
+4. Simulate energy consumption for the final path
+5. **Low-battery check:** if `robot.is_low_battery()` (≤ 20%), abort delivery — plan emergency return to FW, consume return energy, update location to FW, set status `'idle'`, return `status: 'low_battery_return'` (order stays `'bagged'` for re-dispatch)
+6. Otherwise: update robot location to destination, set status `'en_route'`
 
-**Returns:** `{robot_id, order_id, path, distance, status}`
+**Returns (normal):** `{robot_id, order_id, path, distance, status: 'complete'}`
+**Returns (low battery):** `{robot_id, order_id, path, distance, return_path, return_distance, status: 'low_battery_return'}`
 
 ### DeliverOrder
 
@@ -93,24 +95,19 @@ Charge a robot at the Food Warehouse.
 
 **Returns:** `{robot_id, previous_battery, battery_level, status}`
 
-### DispatchFleet
+### ViewFleet
 
-Fleet-level round-robin route dispatch.
+Read-only real-time fleet status display.
 
 **Required params:** none
-**Services:** `RobotService`, `OrderService`, `RoutePlannerService`, `LocationService`
+**Services:** `RobotService` only
 
 **Behavior:**
-1. Load all robots and filter orders to `status == 'bagged'`
-2. Build campus graph once
-3. Round-robin assign: `robot = robots[i % len(robots)]`
-4. For each (robot, order) pair:
-   - Verify robot has bags (`ROBOT_NO_BAGS` — fails the dispatch)
-   - A* search with obstacle replanning
-   - Simulate energy, update robot location + status
-5. Print fleet status trace
+1. Load all robots via `robot_service.list()`
+2. Print `format_for_trace()` for each robot
+3. Return structured payload — never calls `save()`
 
-**Returns:** `{total_distance, routes_planned, details: [...], status}`
+**Returns:** `{robot_count, robots: [{robot_id, location, battery_level, status, bags}, ...]}`
 
 ## Error Codes
 
